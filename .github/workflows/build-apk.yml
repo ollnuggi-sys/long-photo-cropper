@@ -18,6 +18,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+
       - name: Android SDK 준비
         uses: android-actions/setup-android@v3
         with:
@@ -39,13 +40,1281 @@ jobs:
           mkdir -p app/src/main/java/com/longphotocropper/app
 
           cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "LongPhotoCropper"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.useAndroidX=false
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.longphotocropper.app'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.longphotocropper.app'
+                  minSdk 29
+                  targetSdk 34
+                  versionCode 1
+                  versionName '0.5-test'
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:allowBackup="true"
+                  android:label="긴사진 자르기"
+                  android:supportsRtl="true"
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:screenOrientation="portrait"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/java/com/longphotocropper/app/MainActivity.java <<'EOF'
+          package com.longphotocropper.app;
+
+          import android.app.Activity;
+          import android.content.ContentValues;
+          import android.content.Intent;
+          import android.graphics.Bitmap;
+          import android.graphics.BitmapFactory;
+          import android.graphics.BitmapRegionDecoder;
+          import android.graphics.Canvas;
+          import android.graphics.Color;
+          import android.graphics.Paint;
+          import android.graphics.Rect;
+          import android.graphics.RectF;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.os.Environment;
+          import android.provider.MediaStore;
+          import android.view.Gravity;
+          import android.view.MotionEvent;
+          import android.view.View;
+          import android.view.ViewGroup;
+          import android.view.Window;
+          import android.widget.Button;
+          import android.widget.FrameLayout;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+          import android.widget.Toast;
+
+          import java.io.InputStream;
+          import java.io.OutputStream;
+          import java.text.SimpleDateFormat;
+          import java.util.Date;
+          import java.util.Locale;
+
+          public class MainActivity extends Activity {
+
+              private static final int PICK_IMAGE = 1001;
+              private CropView cropView;
+              private TextView infoText;
+              private TextView resultText;
+              private TextView bottomMeta;
+              private Button saveButton;
+              private Uri selectedUri;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  Window w = getWindow();
+                  w.setStatusBarColor(Color.WHITE);
+                  w.getDecorView().setSystemUiVisibility(
+                          View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+
+                  FrameLayout root = new FrameLayout(this);
+                  root.setBackgroundColor(Color.rgb(245, 246, 248));
+
+                  LinearLayout content = new LinearLayout(this);
+                  content.setOrientation(LinearLayout.VERTICAL);
+                  content.setPadding(dp(14), dp(14), dp(14), dp(94));
+
+                  TextView title = text(
+                          "긴사진 자르기",
+                          24,
+                          Color.rgb(20, 24, 29),
+                          true);
+                  content.addView(title);
+
+                  TextView sub = text(
+                          "시작점은 사진 맨 위 0 px로 자동 고정됩니다. 빨간 손잡이를 한 손가락으로 잡아 끌어 끝점을 맞추세요.",
+                          14,
+                          Color.rgb(97, 105, 117),
+                          false);
+
+                  LinearLayout.LayoutParams subLp = lpMatchWrap();
+                  subLp.topMargin = dp(5);
+                  subLp.bottomMargin = dp(12);
+                  content.addView(sub, subLp);
+
+                  Button choose = new Button(this);
+                  choose.setText("긴 사진 선택");
+                  choose.setTextSize(17);
+                  choose.setTextColor(Color.WHITE);
+                  choose.setAllCaps(false);
+                  choose.setBackgroundColor(Color.rgb(37, 99, 235));
+                  choose.setMinHeight(dp(54));
+                  choose.setOnClickListener(v -> chooseImage());
+
+                  content.addView(
+                          choose,
+                          new LinearLayout.LayoutParams(
+                                  ViewGroup.LayoutParams.MATCH_PARENT,
+                                  dp(58)));
+
+                  infoText = text(
+                          "아직 선택한 사진이 없습니다.",
+                          13,
+                          Color.rgb(104, 112, 125),
+                          false);
+
+                  LinearLayout.LayoutParams infoLp = lpMatchWrap();
+                  infoLp.topMargin = dp(7);
+                  infoLp.bottomMargin = dp(8);
+                  content.addView(infoText, infoLp);
+
+                  LinearLayout startCard = new LinearLayout(this);
+                  startCard.setOrientation(LinearLayout.HORIZONTAL);
+                  startCard.setGravity(Gravity.CENTER_VERTICAL);
+                  startCard.setPadding(
+                          dp(14),
+                          dp(9),
+                          dp(14),
+                          dp(9));
+                  startCard.setBackgroundColor(Color.WHITE);
+
+                  LinearLayout startTexts = new LinearLayout(this);
+                  startTexts.setOrientation(LinearLayout.VERTICAL);
+
+                  startTexts.addView(
+                          text(
+                                  "시작점",
+                                  15,
+                                  Color.rgb(24, 28, 34),
+                                  true));
+
+                  startTexts.addView(
+                          text(
+                                  "사진 맨 위 · 0 px",
+                                  12,
+                                  Color.rgb(104, 112, 125),
+                                  false));
+
+                  startCard.addView(
+                          startTexts,
+                          new LinearLayout.LayoutParams(
+                                  0,
+                                  ViewGroup.LayoutParams.WRAP_CONTENT,
+                                  1f));
+
+                  TextView fixed = text(
+                          "자동 고정",
+                          12,
+                          Color.rgb(24, 117, 58),
+                          true);
+
+                  fixed.setPadding(
+                          dp(10),
+                          dp(6),
+                          dp(10),
+                          dp(6));
+
+                  fixed.setBackgroundColor(
+                          Color.rgb(232, 245, 236));
+
+                  startCard.addView(fixed);
+
+                  LinearLayout.LayoutParams cardLp = lpMatchWrap();
+                  cardLp.bottomMargin = dp(8);
+                  content.addView(startCard, cardLp);
+
+                  cropView = new CropView();
+                  cropView.setBackgroundColor(
+                          Color.rgb(223, 227, 233));
+
+                  cropView.setOnSelectionChanged(endY -> {
+                      if (cropView.originalWidth > 0) {
+                          resultText.setText(
+                                  "끝점 "
+                                          + num(endY)
+                                          + " px     결과 "
+                                          + num(cropView.originalWidth)
+                                          + " × "
+                                          + num(endY)
+                                          + " px");
+
+                          bottomMeta.setText(
+                                  "시작 0 px\n끝 "
+                                          + num(endY)
+                                          + " px");
+
+                          saveButton.setEnabled(endY > 0);
+                      }
+                  });
+
+                  LinearLayout.LayoutParams cropLp =
+                          new LinearLayout.LayoutParams(
+                                  ViewGroup.LayoutParams.MATCH_PARENT,
+                                  0,
+                                  1f);
+
+                  cropLp.bottomMargin = dp(8);
+                  content.addView(cropView, cropLp);
+
+                  resultText = text(
+                          "끝점 -     결과 -",
+                          14,
+                          Color.rgb(55, 62, 72),
+                          true);
+
+                  resultText.setPadding(
+                          dp(12),
+                          dp(10),
+                          dp(12),
+                          dp(10));
+
+                  resultText.setBackgroundColor(Color.WHITE);
+                  content.addView(resultText, lpMatchWrap());
+
+                  TextView hint = text(
+                          "빨간 손잡이를 잡고 위·아래로 끌면 됩니다. 빨간 선이 아닌 사진 부분을 끌면 사진 위치만 빠르게 이동합니다.",
+                          12,
+                          Color.rgb(116, 124, 137),
+                          false);
+
+                  LinearLayout.LayoutParams hintLp = lpMatchWrap();
+                  hintLp.topMargin = dp(7);
+                  content.addView(hint, hintLp);
+
+                  root.addView(
+                          content,
+                          new FrameLayout.LayoutParams(
+                                  ViewGroup.LayoutParams.MATCH_PARENT,
+                                  ViewGroup.LayoutParams.MATCH_PARENT));
+
+                  LinearLayout bottom = new LinearLayout(this);
+                  bottom.setOrientation(LinearLayout.HORIZONTAL);
+                  bottom.setGravity(Gravity.CENTER_VERTICAL);
+                  bottom.setPadding(
+                          dp(14),
+                          dp(9),
+                          dp(14),
+                          dp(12));
+
+                  bottom.setBackgroundColor(
+                          Color.rgb(250, 250, 251));
+
+                  bottomMeta = text(
+                          "시작 0 px\n끝 -",
+                          13,
+                          Color.rgb(48, 54, 64),
+                          true);
+
+                  bottom.addView(
+                          bottomMeta,
+                          new LinearLayout.LayoutParams(
+                                  dp(108),
+                                  ViewGroup.LayoutParams.WRAP_CONTENT));
+
+                  saveButton = new Button(this);
+                  saveButton.setText("잘라서 저장");
+                  saveButton.setTextSize(17);
+                  saveButton.setTextColor(Color.WHITE);
+                  saveButton.setAllCaps(false);
+                  saveButton.setEnabled(false);
+                  saveButton.setBackgroundColor(
+                          Color.rgb(37, 99, 235));
+
+                  saveButton.setOnClickListener(
+                          v -> saveCrop());
+
+                  bottom.addView(
+                          saveButton,
+                          new LinearLayout.LayoutParams(
+                                  0,
+                                  dp(58),
+                                  1f));
+
+                  FrameLayout.LayoutParams bottomLp =
+                          new FrameLayout.LayoutParams(
+                                  ViewGroup.LayoutParams.MATCH_PARENT,
+                                  dp(82));
+
+                  bottomLp.gravity = Gravity.BOTTOM;
+                  root.addView(bottom, bottomLp);
+
+                  setContentView(root);
+              }
+
+              private LinearLayout.LayoutParams lpMatchWrap() {
+                  return new LinearLayout.LayoutParams(
+                          ViewGroup.LayoutParams.MATCH_PARENT,
+                          ViewGroup.LayoutParams.WRAP_CONTENT);
+              }
+
+              private TextView text(
+                      String s,
+                      int sp,
+                      int color,
+                      boolean bold) {
+
+                  TextView t = new TextView(this);
+                  t.setText(s);
+                  t.setTextSize(sp);
+                  t.setTextColor(color);
+
+                  if (bold) {
+                      t.setTypeface(
+                              android.graphics.Typeface.DEFAULT,
+                              android.graphics.Typeface.BOLD);
+                  }
+
+                  return t;
+              }
+
+              private int dp(int v) {
+                  return Math.round(
+                          v
+                                  * getResources()
+                                  .getDisplayMetrics()
+                                  .density);
+              }
+
+              private String num(int n) {
+                  return String.format(
+                          Locale.KOREA,
+                          "%,d",
+                          n);
+              }
+
+              private void chooseImage() {
+                  Intent i =
+                          new Intent(
+                                  Intent.ACTION_OPEN_DOCUMENT);
+
+                  i.addCategory(
+                          Intent.CATEGORY_OPENABLE);
+
+                  i.setType("image/*");
+
+                  startActivityForResult(
+                          i,
+                          PICK_IMAGE);
+              }
+
+              @Override
+              protected void onActivityResult(
+                      int requestCode,
+                      int resultCode,
+                      Intent data) {
+
+                  super.onActivityResult(
+                          requestCode,
+                          resultCode,
+                          data);
+
+                  if (requestCode == PICK_IMAGE
+                          && resultCode == RESULT_OK
+                          && data != null
+                          && data.getData() != null) {
+
+                      selectedUri = data.getData();
+
+                      try {
+                          getContentResolver()
+                                  .takePersistableUriPermission(
+                                          selectedUri,
+                                          data.getFlags()
+                                                  & Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                      } catch (Exception ignored) {
+                      }
+
+                      if (cropView.load(selectedUri)) {
+
+                          infoText.setText(
+                                  "원본 "
+                                          + num(cropView.originalWidth)
+                                          + " × "
+                                          + num(cropView.originalHeight)
+                                          + " px");
+
+                      } else {
+
+                          selectedUri = null;
+
+                          infoText.setText(
+                                  "사진을 열지 못했습니다.");
+                      }
+                  }
+              }
+
+              private void saveCrop() {
+
+                  if (selectedUri == null
+                          || cropView.originalWidth <= 0) {
+                      return;
+                  }
+
+                  final int endY =
+                          cropView.getSelectedEndY();
+
+                  if (endY <= 0) {
+                      return;
+                  }
+
+                  saveButton.setEnabled(false);
+                  saveButton.setText("저장 중…");
+
+                  new Thread(() -> {
+
+                      BitmapRegionDecoder decoder = null;
+                      Bitmap cropped = null;
+                      Uri outputUri = null;
+
+                      try {
+
+                          InputStream in =
+                                  getContentResolver()
+                                          .openInputStream(
+                                                  selectedUri);
+
+                          decoder =
+                                  BitmapRegionDecoder
+                                          .newInstance(
+                                                  in,
+                                                  false);
+
+                          if (in != null) {
+                              in.close();
+                          }
+
+                          Rect region =
+                                  new Rect(
+                                          0,
+                                          0,
+                                          cropView.originalWidth,
+                                          Math.min(
+                                                  endY,
+                                                  cropView.originalHeight));
+
+                          cropped =
+                                  decoder.decodeRegion(
+                                          region,
+                                          null);
+
+                          if (cropped == null) {
+                              throw new Exception(
+                                      "decode failed");
+                          }
+
+                          String stamp =
+                                  new SimpleDateFormat(
+                                          "yyyyMMdd_HHmmss",
+                                          Locale.KOREA)
+                                          .format(
+                                                  new Date());
+
+                          ContentValues cv =
+                                  new ContentValues();
+
+                          cv.put(
+                                  MediaStore.Images.Media.DISPLAY_NAME,
+                                  "긴사진_자르기_"
+                                          + stamp
+                                          + ".png");
+
+                          cv.put(
+                                  MediaStore.Images.Media.MIME_TYPE,
+                                  "image/png");
+
+                          cv.put(
+                                  MediaStore.Images.Media.RELATIVE_PATH,
+                                  Environment.DIRECTORY_PICTURES
+                                          + "/긴사진자르기");
+
+                          cv.put(
+                                  MediaStore.Images.Media.IS_PENDING,
+                                  1);
+
+                          outputUri =
+                                  getContentResolver()
+                                          .insert(
+                                                  MediaStore.Images.Media
+                                                          .EXTERNAL_CONTENT_URI,
+                                                  cv);
+
+                          if (outputUri == null) {
+                              throw new Exception(
+                                      "insert failed");
+                          }
+
+                          OutputStream out =
+                                  getContentResolver()
+                                          .openOutputStream(
+                                                  outputUri);
+
+                          if (out == null) {
+                              throw new Exception(
+                                      "output failed");
+                          }
+
+                          if (!cropped.compress(
+                                  Bitmap.CompressFormat.PNG,
+                                  100,
+                                  out)) {
+
+                              throw new Exception(
+                                      "compress failed");
+                          }
+
+                          out.flush();
+                          out.close();
+
+                          cv.clear();
+
+                          cv.put(
+                                  MediaStore.Images.Media.IS_PENDING,
+                                  0);
+
+                          getContentResolver()
+                                  .update(
+                                          outputUri,
+                                          cv,
+                                          null,
+                                          null);
+
+                          runOnUiThread(() -> {
+
+                              saveButton.setText(
+                                      "저장 완료 ✓");
+
+                              Toast.makeText(
+                                              MainActivity.this,
+                                              "사진/Pictures/긴사진자르기에 저장했습니다.",
+                                              Toast.LENGTH_LONG)
+                                      .show();
+
+                              saveButton.postDelayed(
+                                      () -> {
+                                          saveButton.setText(
+                                                  "잘라서 저장");
+
+                                          saveButton.setEnabled(
+                                                  true);
+                                      },
+                                      1000);
+                          });
+
+                      } catch (Throwable e) {
+
+                          if (outputUri != null) {
+
+                              try {
+                                  getContentResolver()
+                                          .delete(
+                                                  outputUri,
+                                                  null,
+                                                  null);
+
+                              } catch (Exception ignored) {
+                              }
+                          }
+
+                          runOnUiThread(() -> {
+
+                              saveButton.setText(
+                                      "다시 저장");
+
+                              saveButton.setEnabled(
+                                      true);
+
+                              Toast.makeText(
+                                              MainActivity.this,
+                                              "저장하지 못했습니다. 끝점을 조금 위로 올린 뒤 다시 시도해 주세요.",
+                                              Toast.LENGTH_LONG)
+                                      .show();
+                          });
+
+                      } finally {
+
+                          if (cropped != null) {
+                              cropped.recycle();
+                          }
+
+                          if (decoder != null) {
+                              decoder.recycle();
+                          }
+                      }
+                  }).start();
+              }
+
+              private class CropView extends View {
+
+                  private Bitmap preview;
+                  private Uri uri;
+
+                  int originalWidth = 0;
+                  int originalHeight = 0;
+
+                  private int sample = 1;
+
+                  private float viewTopOriginal = 0f;
+                  private float lineY = 120f;
+                  private float scale = 1f;
+
+                  private final Paint paint =
+                          new Paint(
+                                  Paint.ANTI_ALIAS_FLAG);
+
+                  private final Paint textPaint =
+                          new Paint(
+                                  Paint.ANTI_ALIAS_FLAG);
+
+                  private boolean lineDrag = false;
+                  private boolean imageDrag = false;
+                  private float lastY = 0f;
+
+                  private SelectionListener listener;
+
+                  private final float edge =
+                          dp(70);
+
+                  private final float handleRadius =
+                          dp(34);
+
+                  CropView() {
+                      super(MainActivity.this);
+
+                      paint.setFilterBitmap(true);
+
+                      textPaint.setTypeface(
+                              android.graphics.Typeface
+                                      .DEFAULT_BOLD);
+
+                      setLayerType(
+                              View.LAYER_TYPE_SOFTWARE,
+                              null);
+                  }
+
+                  void setOnSelectionChanged(
+                          SelectionListener l) {
+
+                      listener = l;
+                  }
+
+                  boolean load(Uri newUri) {
+
+                      recyclePreview();
+
+                      uri = newUri;
+
+                      try {
+
+                          BitmapFactory.Options bounds =
+                                  new BitmapFactory.Options();
+
+                          bounds.inJustDecodeBounds =
+                                  true;
+
+                          InputStream b =
+                                  getContentResolver()
+                                          .openInputStream(
+                                                  uri);
+
+                          BitmapFactory.decodeStream(
+                                  b,
+                                  null,
+                                  bounds);
+
+                          if (b != null) {
+                              b.close();
+                          }
+
+                          originalWidth =
+                                  bounds.outWidth;
+
+                          originalHeight =
+                                  bounds.outHeight;
+
+                          if (originalWidth <= 0
+                                  || originalHeight <= 0) {
+
+                              return false;
+                          }
+
+                          sample = 1;
+
+                          long pixels =
+                                  (long) originalWidth
+                                          * originalHeight;
+
+                          while (pixels
+                                  / ((long) sample
+                                  * sample)
+                                  > 8_000_000L) {
+
+                              sample *= 2;
+                          }
+
+                          BitmapFactory.Options opts =
+                                  new BitmapFactory.Options();
+
+                          opts.inSampleSize =
+                                  sample;
+
+                          opts.inPreferredConfig =
+                                  Bitmap.Config.ARGB_8888;
+
+                          InputStream p =
+                                  getContentResolver()
+                                          .openInputStream(
+                                                  uri);
+
+                          preview =
+                                  BitmapFactory.decodeStream(
+                                          p,
+                                          null,
+                                          opts);
+
+                          if (p != null) {
+                              p.close();
+                          }
+
+                          if (preview == null) {
+                              return false;
+                          }
+
+                          viewTopOriginal = 0f;
+
+                          post(() -> {
+
+                              scale =
+                                      getWidth()
+                                              / (float)
+                                              originalWidth;
+
+                              lineY =
+                                      clamp(
+                                              416f * scale,
+                                              dp(60),
+                                              Math.max(
+                                                      dp(60),
+                                                      getHeight()
+                                                              - dp(70)));
+
+                              notifySelection();
+                              invalidate();
+                          });
+
+                          return true;
+
+                      } catch (Throwable e) {
+
+                          recyclePreview();
+
+                          originalWidth = 0;
+                          originalHeight = 0;
+
+                          return false;
+                      }
+                  }
+
+                  @Override
+                  protected void onDraw(Canvas c) {
+
+                      super.onDraw(c);
+
+                      if (preview == null
+                              || originalWidth <= 0) {
+
+                          paint.setColor(
+                                  Color.rgb(
+                                          107,
+                                          114,
+                                          128));
+
+                          paint.setTextSize(
+                                  dp(16));
+
+                          c.drawText(
+                                  "긴 사진을 선택해 주세요",
+                                  dp(18),
+                                  dp(36),
+                                  paint);
+
+                          return;
+                      }
+
+                      scale =
+                              getWidth()
+                                      / (float)
+                                      originalWidth;
+
+                      float visibleOriginalH =
+                              getHeight()
+                                      / scale;
+
+                      float maxTop =
+                              Math.max(
+                                      0f,
+                                      originalHeight
+                                              - visibleOriginalH);
+
+                      viewTopOriginal =
+                              clamp(
+                                      viewTopOriginal,
+                                      0f,
+                                      maxTop);
+
+                      float maxLine =
+                              (originalHeight
+                                      - viewTopOriginal)
+                                      * scale;
+
+                      lineY =
+                              Math.min(
+                                      lineY,
+                                      maxLine);
+
+                      lineY =
+                              clamp(
+                                      lineY,
+                                      dp(24),
+                                      Math.max(
+                                              dp(24),
+                                              getHeight()
+                                                      - dp(24)));
+
+                      float srcTop =
+                              viewTopOriginal
+                                      / sample;
+
+                      float srcBottom =
+                              Math.min(
+                                      preview.getHeight(),
+                                      (viewTopOriginal
+                                              + visibleOriginalH)
+                                              / sample);
+
+                      RectF src =
+                              new RectF(
+                                      0,
+                                      srcTop,
+                                      preview.getWidth(),
+                                      srcBottom);
+
+                      float destH =
+                              (srcBottom - srcTop)
+                                      * sample
+                                      * scale;
+
+                      RectF dst =
+                              new RectF(
+                                      0,
+                                      0,
+                                      getWidth(),
+                                      destH);
+
+                      paint.setColor(
+                              Color.WHITE);
+
+                      c.drawRect(
+                              0,
+                              0,
+                              getWidth(),
+                              getHeight(),
+                              paint);
+
+                      c.drawBitmap(
+                              preview,
+                              null,
+                              dst,
+                              paint);
+
+                      paint.setColor(
+                              0x570F141C);
+
+                      c.drawRect(
+                              0,
+                              lineY,
+                              getWidth(),
+                              getHeight(),
+                              paint);
+
+                      paint.setColor(
+                              Color.rgb(
+                                      225,
+                                      29,
+                                      72));
+
+                      paint.setStrokeWidth(
+                              dp(4));
+
+                      c.drawLine(
+                              0,
+                              lineY,
+                              getWidth(),
+                              lineY,
+                              paint);
+
+                      float pillW =
+                              dp(164);
+
+                      float pillH =
+                              dp(38);
+
+                      float left =
+                              getWidth()
+                                      / 2f
+                                      - pillW
+                                      / 2f;
+
+                      float top =
+                              lineY
+                                      - pillH
+                                      / 2f;
+
+                      paint.setColor(
+                              Color.rgb(
+                                      225,
+                                      29,
+                                      72));
+
+                      c.drawRoundRect(
+                              left,
+                              top,
+                              left + pillW,
+                              top + pillH,
+                              pillH / 2f,
+                              pillH / 2f,
+                              paint);
+
+                      textPaint.setTextSize(
+                              dp(13));
+
+                      textPaint.setColor(
+                              Color.WHITE);
+
+                      textPaint.setTextAlign(
+                              Paint.Align.CENTER);
+
+                      c.drawText(
+                              "⋮⋮  이 선까지 자르기",
+                              getWidth() / 2f,
+                              lineY + dp(5),
+                              textPaint);
+
+                      int end =
+                              getSelectedEndY();
+
+                      String bubble =
+                              "끝점 "
+                                      + num(end)
+                                      + " px";
+
+                      textPaint.setTextAlign(
+                              Paint.Align.RIGHT);
+
+                      textPaint.setTextSize(
+                              dp(12));
+
+                      textPaint.setColor(
+                              Color.rgb(
+                                      167,
+                                      15,
+                                      46));
+
+                      c.drawText(
+                              bubble,
+                              getWidth()
+                                      - dp(12),
+                              lineY
+                                      + dp(42),
+                              textPaint);
+                  }
+
+                  @Override
+                  public boolean onTouchEvent(
+                          MotionEvent e) {
+
+                      if (preview == null) {
+                          return true;
+                      }
+
+                      switch (
+                              e.getActionMasked()) {
+
+                          case MotionEvent.ACTION_DOWN:
+
+                              getParent()
+                                      .requestDisallowInterceptTouchEvent(
+                                              true);
+
+                              lastY =
+                                      e.getY();
+
+                              if (Math.abs(
+                                      lastY
+                                              - lineY)
+                                      <= handleRadius) {
+
+                                  lineDrag =
+                                          true;
+
+                                  imageDrag =
+                                          false;
+
+                              } else {
+
+                                  imageDrag =
+                                          true;
+
+                                  lineDrag =
+                                          false;
+                              }
+
+                              return true;
+
+                          case MotionEvent.ACTION_MOVE:
+
+                              float y =
+                                      e.getY();
+
+                              float dy =
+                                      y - lastY;
+
+                              lastY = y;
+
+                              scale =
+                                      getWidth()
+                                              / (float)
+                                              originalWidth;
+
+                              float visibleOriginalH =
+                                      getHeight()
+                                              / scale;
+
+                              float maxTop =
+                                      Math.max(
+                                              0f,
+                                              originalHeight
+                                                      - visibleOriginalH);
+
+                              if (lineDrag) {
+
+                                  float next =
+                                          lineY
+                                                  + dy;
+
+                                  if (next
+                                                  > getHeight()
+                                                  - edge
+                                          && dy > 0
+                                          && viewTopOriginal
+                                                  < maxTop) {
+
+                                      lineY =
+                                              getHeight()
+                                                      - edge;
+
+                                      viewTopOriginal +=
+                                              dy
+                                                      / scale;
+
+                                  } else if (
+                                          next < edge
+                                                  && dy < 0
+                                                  && viewTopOriginal
+                                                  > 0) {
+
+                                      lineY =
+                                              edge;
+
+                                      viewTopOriginal +=
+                                              dy
+                                                      / scale;
+
+                                  } else {
+
+                                      lineY =
+                                              next;
+                                  }
+
+                              } else if (
+                                      imageDrag) {
+
+                                  viewTopOriginal -=
+                                          dy
+                                                  / scale;
+                              }
+
+                              viewTopOriginal =
+                                      clamp(
+                                              viewTopOriginal,
+                                              0f,
+                                              maxTop);
+
+                              lineY =
+                                      clamp(
+                                              lineY,
+                                              dp(24),
+                                              Math.max(
+                                                      dp(24),
+                                                      getHeight()
+                                                              - dp(24)));
+
+                              float maxLine =
+                                      (originalHeight
+                                              - viewTopOriginal)
+                                              * scale;
+
+                              lineY =
+                                      Math.min(
+                                              lineY,
+                                              maxLine);
+
+                              notifySelection();
+                              invalidate();
+
+                              return true;
+
+                          case MotionEvent.ACTION_UP:
+                          case MotionEvent.ACTION_CANCEL:
+
+                              lineDrag =
+                                      false;
+
+                              imageDrag =
+                                      false;
+
+                              getParent()
+                                      .requestDisallowInterceptTouchEvent(
+                                              false);
+
+                              return true;
+                      }
+
+                      return true;
+                  }
+
+                  int getSelectedEndY() {
+
+                      if (originalWidth <= 0) {
+                          return 0;
+                      }
+
+                      scale =
+                              getWidth()
+                                      / (float)
+                                      originalWidth;
+
+                      return Math.max(
+                              0,
+                              Math.min(
+                                      originalHeight,
+                                      Math.round(
+                                              viewTopOriginal
+                                                      + lineY
+                                                      / scale)));
+                  }
+
+                  private void notifySelection() {
+
+                      if (listener != null) {
+
+                          listener.changed(
+                                  getSelectedEndY());
+                      }
+                  }
+
+                  private float clamp(
+                          float v,
+                          float a,
+                          float b) {
+
+                      return Math.max(
+                              a,
+                              Math.min(
+                                      b,
+                                      v));
+                  }
+
+                  private void recyclePreview() {
+
+                      if (preview != null) {
+
+                          preview.recycle();
+                          preview = null;
+                      }
+                  }
+              }
+
+              private interface SelectionListener {
+
+                  void changed(
+                          int endY);
+              }
+          }
+          EOF
+
       - name: APK 빌드
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: APK 파일 이름 변경
+      - name: 배포용 APK 이름 변경
         run: cp app/build/outputs/apk/debug/app-debug.apk long-photo-cropper-v0.5-test.apk
 
-      - name: APK 다운로드 파일 만들기
+      - name: APK 보관
         uses: actions/upload-artifact@v4
         with:
           name: long-photo-cropper-v0.5-test
