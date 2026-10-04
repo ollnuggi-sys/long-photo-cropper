@@ -947,40 +947,46 @@ jobs:
                                               + visibleOriginalH)
                                               / sample);
 
-                      RectF src =
-                              new RectF(
-                                      0,
-                                      srcTop,
-                                      preview.getWidth(),
-                                      srcBottom);
+                      Rect src =
+        new Rect(
+                0,
+                Math.max(
+                        0,
+                        Math.round(srcTop)),
+                preview.getWidth(),
+                Math.min(
+                        preview.getHeight(),
+                        Math.max(
+                                1,
+                                Math.round(srcBottom))));
 
-                      float destH =
-                              (srcBottom - srcTop)
-                                      * sample
-                                      * scale;
+float destH =
+        (src.bottom - src.top)
+                * sample
+                * scale;
 
-                      RectF dst =
-                              new RectF(
-                                      0,
-                                      0,
-                                      getWidth(),
-                                      destH);
+RectF dst =
+        new RectF(
+                0,
+                0,
+                getWidth(),
+                destH);
 
-                      paint.setColor(
-                              Color.WHITE);
+paint.setColor(
+        Color.WHITE);
 
-                      c.drawRect(
-                              0,
-                              0,
-                              getWidth(),
-                              getHeight(),
-                              paint);
+c.drawRect(
+        0,
+        0,
+        getWidth(),
+        getHeight(),
+        paint);
 
-                      c.drawBitmap(
-                              preview,
-                              null,
-                              dst,
-                              paint);
+c.drawBitmap(
+        preview,
+        src,
+        dst,
+        paint);
 
                       paint.setColor(
                               0x570F141C);
