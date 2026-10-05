@@ -349,78 +349,7 @@ saveBtn.addEventListener('click', () => {
     }, 3000);
   }, 'image/jpeg', 0.95);
 });
-  saveBtn.addEventListener('click', async () => {
-    if (!originalWidth || !originalHeight || !objectUrl) return;
-
-    const cropHeight = clampSelectedY(selectedY);
-    let canvas;
-
-    try {
-      canvas = document.createElement('canvas');
-      canvas.width = originalWidth;
-      canvas.height = cropHeight;
-
-      const ctx = canvas.getContext('2d', { alpha: false });
-
-      ctx.drawImage(
-        preview,
-        0,
-        0,
-        originalWidth,
-        cropHeight,
-        0,
-        0,
-        originalWidth,
-        cropHeight
-      );
-    } catch (err) {
-      alert('이 크기의 이미지를 처리하지 못했습니다. 자를 위치를 조금 위로 조정해 주세요.');
-      return;
-    }
-
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        alert('저장 파일을 만들지 못했습니다.');
-        return;
-      }
-
-      const filename = 'cropped-' + Date.now() + '.jpg';
-      const file = new File([blob], filename, {
-        type: 'image/jpeg'
-      });
-
-      if (
-        navigator.canShare &&
-        navigator.canShare({ files: [file] })
-      ) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: '자른 이미지'
-          });
-          return;
-        } catch (err) {
-          if (err && err.name === 'AbortError') {
-            return;
-          }
-        }
-      }
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-
-      a.href = url;
-      a.download = filename;
-
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 1000);
-    }, 'image/jpeg', 0.95);
-  });
+  
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
