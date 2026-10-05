@@ -844,14 +844,31 @@ jobs:
                                               / (float)
                                               originalWidth;
 
+                              float desiredEndY = 416f;
+
+                              float maxVisibleLineY =
+                                      Math.max(
+                                              dp(24),
+                                              getHeight()
+                                                      - dp(24));
+
                               lineY =
-                                      clamp(
-                                              416f * scale,
-                                              dp(60),
-                                              Math.max(
-                                                      dp(60),
-                                                      getHeight()
-                                                              - dp(70)));
+                                      desiredEndY * scale;
+
+                              if (lineY > maxVisibleLineY) {
+
+                                  viewTopOriginal =
+                                          Math.max(
+                                                  0f,
+                                                  desiredEndY
+                                                          - maxVisibleLineY
+                                                          / scale);
+
+                                  lineY =
+                                          (desiredEndY
+                                                  - viewTopOriginal)
+                                                  * scale;
+                              }
 
                               notifySelection();
                               invalidate();
