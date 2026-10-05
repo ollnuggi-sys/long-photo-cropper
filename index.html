@@ -273,6 +273,7 @@ empty.style.display = 'none';
       preview.hidden = false;
       cropLine.hidden = false;
       saveBtn.disabled = false;
+      shareBtn.disabled = false;
 
       sizeInfo.textContent =
         '원본 ' +
@@ -356,7 +357,58 @@ saveBtn.addEventListener('click', () => {
   }, 'image/jpeg', 0.95);
 });
   
+shareBtn.addEventListener('click', async () => {
+  if (!originalWidth || !originalHeight || !objectUrl) return;
 
+  const cropHeight = clampSelectedY(selectedY);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = originalWidth;
+  canvas.height = cropHeight;
+
+  const ctx = canvas.getContext('2d', { alpha: false });
+
+  ctx.drawImage(
+    preview,
+    0,
+    0,
+    originalWidth,
+    cropHeight,
+    0,
+    0,
+    originalWidth,
+    cropHeight
+  );
+
+  canvas.toBlob(async (blob) => {
+    if (!blob) {
+      alert('공유할 이미지를 만들지 못했습니다.');
+      return;
+    }
+
+    const file = new File(
+      [blob],
+      'cropped-' + Date.now() + '.jpg',
+      { type: 'image/jpeg' }
+    );
+
+    if (
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: '자른 이미지'
+        });
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+    } else {
+      alert('이 브라우저에서는 파일 공유 기능을 지원하지 않습니다.');
+    }
+  }, 'image/jpeg', 0.95);
+});
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
