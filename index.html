@@ -1,422 +1,1049 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#111827" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta charset="utf-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta name="theme-color" content="#111827">
+
   <title>긴사진 자르기</title>
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+
   <style>
     :root {
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
       color-scheme: light;
-      font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     }
-    * { box-sizing: border-box; }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       background: #f3f4f6;
       color: #111827;
     }
+
     .app {
+      width: 100%;
       max-width: 760px;
-      margin: 0 auto;
       min-height: 100vh;
-      background: white;
+      margin: 0 auto;
+      background: #ffffff;
     }
+
     header {
       position: sticky;
       top: 0;
       z-index: 20;
+
       padding: 14px 16px 12px;
-      background: rgba(255,255,255,.96);
+
+      background: rgba(255, 255, 255, 0.96);
       border-bottom: 1px solid #e5e7eb;
+
       backdrop-filter: blur(10px);
     }
-    h1 { margin: 0; font-size: 20px; }
-    .sub { margin-top: 4px; font-size: 12px; color: #6b7280; }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .sub {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
     .toolbar {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+
       padding: 14px 16px 10px;
     }
-    button, .fileLabel {
+
+    button,
+    .fileLabel {
       min-height: 48px;
+
       border: 0;
       border-radius: 12px;
-      font-size: 16px;
+
+      font-size: 15px;
       font-weight: 700;
+
       display: flex;
       align-items: center;
       justify-content: center;
+
       cursor: pointer;
     }
-    .fileLabel { background: #111827; color: white; }
-    button { background: #ef4444; color: white; }
-    button:disabled { opacity: .45; cursor: default; }
-    input[type=file] { display: none; }
+
+    .fileLabel {
+      background: #111827;
+      color: white;
+    }
+
+    #saveBtn {
+      background: #ef4444;
+      color: white;
+    }
+
+    #shareBtn {
+      background: #2563eb;
+      color: white;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
     .info {
       display: flex;
       justify-content: space-between;
       gap: 10px;
+
       padding: 0 16px 10px;
+
       font-size: 13px;
       color: #4b5563;
     }
+
     .hint {
       margin: 0 16px 12px;
+
       padding: 10px 12px;
+
       border-radius: 10px;
+
       background: #fff7ed;
       color: #9a3412;
+
       font-size: 13px;
       line-height: 1.45;
     }
+
+    .status {
+      display: none;
+
+      margin: 0 16px 10px;
+
+      padding: 9px 12px;
+
+      border-radius: 9px;
+
+      background: #ecfdf5;
+      color: #166534;
+
+      font-size: 13px;
+    }
+
     .viewport {
-      height: calc(100vh - 190px);
+      height: calc(100vh - 205px);
       min-height: 420px;
+
       overflow: auto;
+
       background: #d1d5db;
+
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
     }
+
     .stage {
       position: relative;
+
       width: 100%;
       min-height: 100%;
-      background: white;
+
+      background: #ffffff;
     }
+
     #preview {
       display: block;
+
       width: 100%;
       height: auto;
+
       margin: 0;
+      padding: 0;
+
       object-position: top left;
+
       user-select: none;
       -webkit-user-drag: none;
     }
+
     .empty {
       min-height: 420px;
+
       display: grid;
       place-items: center;
+
       padding: 28px;
+
       color: #6b7280;
       text-align: center;
       line-height: 1.6;
     }
-    [hidden] { display: none !important; }
+
+    [hidden] {
+      display: none !important;
+    }
+
     .cropLine {
       position: absolute;
+
       left: 0;
       right: 0;
+
       height: 0;
+
       border-top: 3px solid #ef4444;
+
       z-index: 10;
+
       touch-action: none;
       cursor: ns-resize;
     }
+
     .cropLine::before {
       content: "";
+
       position: absolute;
+
       left: 0;
       right: 0;
-      top: -18px;
-      height: 36px;
+
+      top: -20px;
+
+      height: 40px;
     }
+
     .badge {
       position: absolute;
+
       right: 8px;
-      top: -34px;
+      top: -35px;
+
+      padding: 5px 8px;
+
+      border-radius: 8px;
+
       background: #ef4444;
       color: white;
+
       font-size: 12px;
       font-weight: 800;
-      padding: 5px 8px;
-      border-radius: 8px;
+
       white-space: nowrap;
-      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
+
     .privacy {
       padding: 12px 16px 18px;
-      font-size: 12px;
+
       color: #6b7280;
+
+      font-size: 12px;
       line-height: 1.5;
+    }
+
+    @media (max-width: 520px) {
+      .toolbar {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .fileLabel {
+        grid-column: 1 / 3;
+      }
     }
   </style>
 </head>
+
 <body>
-  <main class="app">
-    <header>
-      <h1>긴사진 자르기</h1>
-      <div class="sub">사진은 서버로 전송되지 않고 이 기기 안에서만 처리됩니다.</div>
-    </header>
-<section class="toolbar">
-  <label class="fileLabel" for="fileInput">사진 불러오기</label>
-  <button id="saveBtn" disabled>저장하기</button>
-  <button id="shareBtn" disabled>공유하기</button>
-  <input id="fileInput" type="file" accept="image/*" />
-</section>
-    <section class="toolbar">
-      <label class="fileLabel" for="fileInput">사진 불러오기</label>
-      <button id="saveBtn" disabled>이 선까지 자르기</button>
-      <input id="fileInput" type="file" accept="image/*" />
-    </section>
 
-    <section class="info">
-      <span id="sizeInfo">사진을 선택해 주세요</span>
-      <strong id="cutInfo">끝점 416px</strong>
-    </section>
+<main class="app">
 
-    <div class="hint">빨간 선을 위아래로 움직여 자를 위치를 맞춘 뒤 저장하세요. 처음 위치는 원본 기준 416px입니다.</div>
+  <header>
+    <h1>긴사진 자르기</h1>
 
-    <section class="viewport" id="viewport">
-      <div class="stage" id="stage">
-        <div class="empty" id="empty">긴 스크린샷이나 사진을 선택하면 여기에 표시됩니다.</div>
-        <img id="preview" alt="" hidden />
-        <div class="cropLine" id="cropLine" hidden>
-          <span class="badge" id="lineBadge">416px</span>
-        </div>
+    <div class="sub">
+      사진은 서버로 전송되지 않고 이 기기 안에서만 처리됩니다.
+    </div>
+  </header>
+
+
+  <section class="toolbar">
+
+    <label
+      class="fileLabel"
+      for="fileInput"
+    >
+      사진 불러오기
+    </label>
+
+    <button
+      id="saveBtn"
+      disabled
+    >
+      저장하기
+    </button>
+
+    <button
+      id="shareBtn"
+      disabled
+    >
+      공유하기
+    </button>
+
+    <input
+      id="fileInput"
+      type="file"
+      accept="image/*"
+    >
+
+  </section>
+
+
+  <section class="info">
+
+    <span id="sizeInfo">
+      사진을 선택해 주세요
+    </span>
+
+    <strong id="cutInfo">
+      끝점 416px
+    </strong>
+
+  </section>
+
+
+  <div class="hint">
+    빨간 선을 위아래로 움직여 자를 위치를 맞춘 뒤 저장하세요.
+    처음 위치는 원본 기준 416px입니다.
+  </div>
+
+
+  <div
+    class="status"
+    id="status"
+  ></div>
+
+
+  <section
+    class="viewport"
+    id="viewport"
+  >
+
+    <div
+      class="stage"
+      id="stage"
+    >
+
+      <div
+        class="empty"
+        id="empty"
+      >
+        긴 스크린샷이나 사진을 선택하면
+        여기에 표시됩니다.
       </div>
-    </section>
 
-    <div class="privacy">오프라인 사용을 지원하며, 선택한 사진과 결과물은 별도 서버에 저장하지 않습니다.</div>
-  </main>
+
+      <img
+        id="preview"
+        alt=""
+        hidden
+      >
+
+
+      <div
+        class="cropLine"
+        id="cropLine"
+        hidden
+      >
+
+        <span
+          class="badge"
+          id="lineBadge"
+        >
+          416px
+        </span>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <div class="privacy">
+    선택한 사진과 자른 이미지는 별도 서버에 저장되지 않습니다.
+  </div>
+
+</main>
+
 
 <script>
+
 (() => {
+
+  "use strict";
+
+
   const DEFAULT_CUT = 416;
-  const fileInput = document.getElementById('fileInput');
-  const saveBtn = document.getElementById('saveBtn');
-  const shareBtn = document.getElementById('shareBtn');
-  const preview = document.getElementById('preview');
-  const cropLine = document.getElementById('cropLine');
-  const lineBadge = document.getElementById('lineBadge');
-  const sizeInfo = document.getElementById('sizeInfo');
-  const cutInfo = document.getElementById('cutInfo');
-  const viewport = document.getElementById('viewport');
-  const empty = document.getElementById('empty');
+
+
+  const fileInput =
+    document.getElementById("fileInput");
+
+  const saveBtn =
+    document.getElementById("saveBtn");
+
+  const shareBtn =
+    document.getElementById("shareBtn");
+
+  const preview =
+    document.getElementById("preview");
+
+  const cropLine =
+    document.getElementById("cropLine");
+
+  const lineBadge =
+    document.getElementById("lineBadge");
+
+  const sizeInfo =
+    document.getElementById("sizeInfo");
+
+  const cutInfo =
+    document.getElementById("cutInfo");
+
+  const viewport =
+    document.getElementById("viewport");
+
+  const empty =
+    document.getElementById("empty");
+
+  const status =
+    document.getElementById("status");
+
 
   let objectUrl = null;
+
   let originalWidth = 0;
+
   let originalHeight = 0;
+
   let selectedY = DEFAULT_CUT;
+
   let dragging = false;
 
-  function displayScale() {
-    return originalWidth > 0 ? preview.clientWidth / originalWidth : 1;
+
+
+  function showStatus(message) {
+
+    status.textContent = message;
+
+    status.style.display = "block";
+
+    clearTimeout(showStatus.timer);
+
+    showStatus.timer = setTimeout(() => {
+
+      status.style.display = "none";
+
+    }, 3000);
+
   }
+
+
+
+  function displayScale() {
+
+    if (!originalWidth) {
+      return 1;
+    }
+
+    return preview.clientWidth / originalWidth;
+
+  }
+
+
 
   function clampSelectedY(value) {
-    if (!originalHeight) return DEFAULT_CUT;
-    return Math.max(1, Math.min(originalHeight, Math.round(value)));
+
+    if (!originalHeight) {
+      return DEFAULT_CUT;
+    }
+
+    return Math.max(
+      1,
+      Math.min(
+        originalHeight,
+        Math.round(value)
+      )
+    );
+
   }
+
+
 
   function updateLine() {
-    if (!originalHeight || preview.hidden) return;
-    const scale = displayScale();
-    selectedY = clampSelectedY(selectedY);
-    cropLine.style.top = (selectedY * scale) + 'px';
-    lineBadge.textContent = selectedY.toLocaleString() + 'px';
-    cutInfo.textContent = '끝점 ' + selectedY.toLocaleString() + 'px';
-  }
-
-  function setSelectedFromClientY(clientY) {
-    const rect = preview.getBoundingClientRect();
-    const scale = displayScale();
-    const yOnImage = (clientY - rect.top) / scale;
-    selectedY = clampSelectedY(yOnImage);
-    updateLine();
-  }
-
-  cropLine.addEventListener('pointerdown', (e) => {
-    dragging = true;
-    cropLine.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  });
-
-  cropLine.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    setSelectedFromClientY(e.clientY);
-    e.preventDefault();
-  });
-
-  cropLine.addEventListener('pointerup', (e) => {
-    dragging = false;
-    try {
-      cropLine.releasePointerCapture(e.pointerId);
-    } catch {}
-  });
-
-  cropLine.addEventListener('pointercancel', () => {
-    dragging = false;
-  });
-
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files && fileInput.files[0];
-    if (!file) return;
-
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl);
-    }
-
-    objectUrl = URL.createObjectURL(file);
-
-    preview.onload = () => {
-      originalWidth = preview.naturalWidth;
-      originalHeight = preview.naturalHeight;
-      selectedY = Math.min(DEFAULT_CUT, originalHeight);
-empty.style.display = 'none';
-      empty.hidden = true;
-      preview.hidden = false;
-      cropLine.hidden = false;
-      saveBtn.disabled = false;
-      shareBtn.disabled = false;
-
-      sizeInfo.textContent =
-        '원본 ' +
-        originalWidth.toLocaleString() +
-        ' × ' +
-        originalHeight.toLocaleString() +
-        ' px';
-
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          updateLine();
-          viewport.scrollTo({
-            top: 0,
-            left: 0,
-            behavior: 'auto'
-          });
-        });
-      });
-    };
-
-    preview.onerror = () => {
-      alert('이 사진을 불러오지 못했습니다. 다른 이미지 파일로 다시 시도해 주세요.');
-    };
-
-    preview.src = objectUrl;
-  });
-
-  window.addEventListener('resize', () => {
-    requestAnimationFrame(updateLine);
-  });
-saveBtn.addEventListener('click', () => {
-  if (!originalWidth || !originalHeight || !objectUrl) return;
-
-  const cropHeight = clampSelectedY(selectedY);
-
-  let canvas;
-
-  try {
-    canvas = document.createElement('canvas');
-    canvas.width = originalWidth;
-    canvas.height = cropHeight;
-
-    const ctx = canvas.getContext('2d', { alpha: false });
-
-    ctx.drawImage(
-      preview,
-      0,
-      0,
-      originalWidth,
-      cropHeight,
-      0,
-      0,
-      originalWidth,
-      cropHeight
-    );
-  } catch (err) {
-    alert('이미지를 처리하지 못했습니다.');
-    return;
-  }
-
-  canvas.toBlob((blob) => {
-    if (!blob) {
-      alert('저장 파일을 만들지 못했습니다.');
-      return;
-    }
-
-    const filename = 'cropped-' + Date.now() + '.jpg';
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 3000);
-  }, 'image/jpeg', 0.95);
-});
-  
-shareBtn.addEventListener('click', async () => {
-  if (!originalWidth || !originalHeight || !objectUrl) return;
-
-  const cropHeight = clampSelectedY(selectedY);
-
-  const canvas = document.createElement('canvas');
-  canvas.width = originalWidth;
-  canvas.height = cropHeight;
-
-  const ctx = canvas.getContext('2d', { alpha: false });
-
-  ctx.drawImage(
-    preview,
-    0,
-    0,
-    originalWidth,
-    cropHeight,
-    0,
-    0,
-    originalWidth,
-    cropHeight
-  );
-
-  canvas.toBlob(async (blob) => {
-    if (!blob) {
-      alert('공유할 이미지를 만들지 못했습니다.');
-      return;
-    }
-
-    const file = new File(
-      [blob],
-      'cropped-' + Date.now() + '.jpg',
-      { type: 'image/jpeg' }
-    );
 
     if (
-      navigator.canShare &&
-      navigator.canShare({ files: [file] })
+      !originalHeight ||
+      preview.hidden
     ) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: '자른 이미지'
-        });
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-      }
-    } else {
-      alert('이 브라우저에서는 파일 공유 기능을 지원하지 않습니다.');
+      return;
     }
-  }, 'image/jpeg', 0.95);
-});
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('./sw.js')
-        .catch(() => {});
-    });
+
+    const scale = displayScale();
+
+    selectedY =
+      clampSelectedY(selectedY);
+
+    cropLine.style.top =
+      (selectedY * scale) + "px";
+
+    lineBadge.textContent =
+      selectedY.toLocaleString() + "px";
+
+    cutInfo.textContent =
+      "끝점 " +
+      selectedY.toLocaleString() +
+      "px";
+
   }
+
+
+
+  function setSelectedFromClientY(clientY) {
+
+    const rect =
+      preview.getBoundingClientRect();
+
+    const scale =
+      displayScale();
+
+    if (!scale) {
+      return;
+    }
+
+    const yOnImage =
+      (clientY - rect.top) / scale;
+
+    selectedY =
+      clampSelectedY(yOnImage);
+
+    updateLine();
+
+  }
+
+
+
+  cropLine.addEventListener(
+    "pointerdown",
+    event => {
+
+      dragging = true;
+
+      try {
+        cropLine.setPointerCapture(
+          event.pointerId
+        );
+      } catch (_) {}
+
+      event.preventDefault();
+
+    }
+  );
+
+
+
+  cropLine.addEventListener(
+    "pointermove",
+    event => {
+
+      if (!dragging) {
+        return;
+      }
+
+      setSelectedFromClientY(
+        event.clientY
+      );
+
+      event.preventDefault();
+
+    }
+  );
+
+
+
+  cropLine.addEventListener(
+    "pointerup",
+    event => {
+
+      dragging = false;
+
+      try {
+
+        cropLine.releasePointerCapture(
+          event.pointerId
+        );
+
+      } catch (_) {}
+
+    }
+  );
+
+
+
+  cropLine.addEventListener(
+    "pointercancel",
+    () => {
+
+      dragging = false;
+
+    }
+  );
+
+
+
+  fileInput.addEventListener(
+    "change",
+    () => {
+
+      const file =
+        fileInput.files &&
+        fileInput.files[0];
+
+      if (!file) {
+        return;
+      }
+
+
+      if (objectUrl) {
+
+        URL.revokeObjectURL(
+          objectUrl
+        );
+
+      }
+
+
+      objectUrl =
+        URL.createObjectURL(file);
+
+
+      preview.onload = () => {
+
+        originalWidth =
+          preview.naturalWidth;
+
+        originalHeight =
+          preview.naturalHeight;
+
+
+        selectedY =
+          Math.min(
+            DEFAULT_CUT,
+            originalHeight
+          );
+
+
+        empty.hidden = true;
+
+        preview.hidden = false;
+
+        cropLine.hidden = false;
+
+
+        saveBtn.disabled = false;
+
+        shareBtn.disabled = false;
+
+
+        sizeInfo.textContent =
+          "원본 " +
+          originalWidth.toLocaleString() +
+          " × " +
+          originalHeight.toLocaleString() +
+          " px";
+
+
+        requestAnimationFrame(() => {
+
+          requestAnimationFrame(() => {
+
+            updateLine();
+
+            viewport.scrollTo({
+              top: 0,
+              left: 0,
+              behavior: "auto"
+            });
+
+          });
+
+        });
+
+      };
+
+
+      preview.onerror = () => {
+
+        alert(
+          "이 사진을 불러오지 못했습니다."
+        );
+
+      };
+
+
+      preview.src =
+        objectUrl;
+
+  });
+
+
+
+  window.addEventListener(
+    "resize",
+    () => {
+
+      requestAnimationFrame(
+        updateLine
+      );
+
+    }
+  );
+
+
+
+  function makeCroppedBlob(callback) {
+
+    if (
+      !originalWidth ||
+      !originalHeight ||
+      !objectUrl
+    ) {
+
+      return;
+
+    }
+
+
+    const cropHeight =
+      clampSelectedY(selectedY);
+
+
+    let canvas;
+
+    let ctx;
+
+
+    try {
+
+      canvas =
+        document.createElement(
+          "canvas"
+        );
+
+      canvas.width =
+        originalWidth;
+
+      canvas.height =
+        cropHeight;
+
+
+      ctx =
+        canvas.getContext(
+          "2d",
+          { alpha: false }
+        );
+
+
+      if (!ctx) {
+
+        throw new Error(
+          "canvas unavailable"
+        );
+
+      }
+
+
+      ctx.drawImage(
+        preview,
+
+        0,
+        0,
+        originalWidth,
+        cropHeight,
+
+        0,
+        0,
+        originalWidth,
+        cropHeight
+      );
+
+
+    } catch (error) {
+
+      alert(
+        "이미지를 처리하지 못했습니다."
+      );
+
+      return;
+
+    }
+
+
+    canvas.toBlob(
+
+      blob => {
+
+        if (!blob) {
+
+          alert(
+            "이미지 파일을 만들지 못했습니다."
+          );
+
+          return;
+
+        }
+
+        callback(blob);
+
+      },
+
+      "image/jpeg",
+
+      0.95
+
+    );
+
+  }
+
+
+
+  saveBtn.addEventListener(
+    "click",
+    () => {
+
+      makeCroppedBlob(
+        blob => {
+
+          const filename =
+            "cropped-" +
+            Date.now() +
+            ".jpg";
+
+
+          const url =
+            URL.createObjectURL(
+              blob
+            );
+
+
+          const link =
+            document.createElement(
+              "a"
+            );
+
+
+          link.href =
+            url;
+
+          link.download =
+            filename;
+
+
+          link.style.display =
+            "none";
+
+
+          document.body.appendChild(
+            link
+          );
+
+
+          link.click();
+
+
+          link.remove();
+
+
+          showStatus(
+            "저장을 시작했습니다."
+          );
+
+
+          setTimeout(
+            () => {
+
+              URL.revokeObjectURL(
+                url
+              );
+
+            },
+
+            10000
+          );
+
+        }
+      );
+
+    }
+  );
+
+
+
+  shareBtn.addEventListener(
+    "click",
+    () => {
+
+      makeCroppedBlob(
+        async blob => {
+
+          const filename =
+            "cropped-" +
+            Date.now() +
+            ".jpg";
+
+
+          const file =
+            new File(
+              [blob],
+              filename,
+              {
+                type: "image/jpeg"
+              }
+            );
+
+
+          if (
+            navigator.share &&
+            navigator.canShare &&
+            navigator.canShare({
+              files: [file]
+            })
+          ) {
+
+            try {
+
+              await navigator.share({
+                files: [file],
+                title: "자른 이미지"
+              });
+
+            } catch (error) {
+
+              if (
+                error &&
+                error.name ===
+                "AbortError"
+              ) {
+
+                return;
+
+              }
+
+              alert(
+                "공유하지 못했습니다."
+              );
+
+            }
+
+          } else {
+
+            alert(
+              "이 브라우저에서는 파일 공유 기능을 지원하지 않습니다."
+            );
+
+          }
+
+        }
+      );
+
+    }
+  );
+
+
+
+  /*
+    이전 버전의 서비스워커와 캐시를
+    자동으로 제거합니다.
+
+    이 버전부터는 최신 파일을
+    바로 불러오도록 합니다.
+  */
+
+  if (
+    "serviceWorker" in navigator
+  ) {
+
+    navigator.serviceWorker
+      .getRegistrations()
+      .then(
+        registrations => {
+
+          registrations.forEach(
+            registration => {
+
+              registration.unregister();
+
+            }
+          );
+
+        }
+      )
+      .catch(() => {});
+
+  }
+
+
+  if ("caches" in window) {
+
+    caches
+      .keys()
+      .then(
+        keys => {
+
+          keys.forEach(
+            key => {
+
+              caches.delete(key);
+
+            }
+          );
+
+        }
+      )
+      .catch(() => {});
+
+  }
+
+
 })();
+
 </script>
+
 </body>
 </html>
