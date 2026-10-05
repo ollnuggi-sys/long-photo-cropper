@@ -93,6 +93,8 @@
       display: block;
       width: 100%;
       height: auto;
+      margin: 0;
+      object-position: top left;
       user-select: none;
       -webkit-user-drag: none;
     }
@@ -227,22 +229,32 @@
     cropLine.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
+
   cropLine.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     setSelectedFromClientY(e.clientY);
     e.preventDefault();
   });
+
   cropLine.addEventListener('pointerup', (e) => {
     dragging = false;
-    try { cropLine.releasePointerCapture(e.pointerId); } catch {}
+    try {
+      cropLine.releasePointerCapture(e.pointerId);
+    } catch {}
   });
-  cropLine.addEventListener('pointercancel', () => dragging = false);
+
+  cropLine.addEventListener('pointercancel', () => {
+    dragging = false;
+  });
 
   fileInput.addEventListener('change', () => {
     const file = fileInput.files && fileInput.files[0];
     if (!file) return;
 
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+    }
+
     objectUrl = URL.createObjectURL(file);
 
     preview.onload = () => {
@@ -255,31 +267,60 @@
       cropLine.hidden = false;
       saveBtn.disabled = false;
 
-      sizeInfo.textContent = '원본 ' + originalWidth.toLocaleString() + ' × ' + originalHeight.toLocaleString() + ' px';
+      sizeInfo.textContent =
+        '원본 ' +
+        originalWidth.toLocaleString() +
+        ' × ' +
+        originalHeight.toLocaleString() +
+        ' px';
+
       requestAnimationFrame(() => {
-        updateLine();
-        viewport.scrollTop = 0;
+        requestAnimationFrame(() => {
+          updateLine();
+          viewport.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: 'auto'
+          });
+        });
       });
     };
+
     preview.onerror = () => {
       alert('이 사진을 불러오지 못했습니다. 다른 이미지 파일로 다시 시도해 주세요.');
     };
+
     preview.src = objectUrl;
   });
 
-  window.addEventListener('resize', () => requestAnimationFrame(updateLine));
+  window.addEventListener('resize', () => {
+    requestAnimationFrame(updateLine);
+  });
 
   saveBtn.addEventListener('click', async () => {
     if (!originalWidth || !originalHeight || !objectUrl) return;
 
     const cropHeight = clampSelectedY(selectedY);
     let canvas;
+
     try {
       canvas = document.createElement('canvas');
       canvas.width = originalWidth;
       canvas.height = cropHeight;
+
       const ctx = canvas.getContext('2d', { alpha: false });
-      ctx.drawImage(preview, 0, 0, originalWidth, cropHeight, 0, 0, originalWidth, cropHeight);
+
+      ctx.drawImage(
+        preview,
+        0,
+        0,
+        originalWidth,
+        cropHeight,
+        0,
+        0,
+        originalWidth,
+        cropHeight
+      );
     } catch (err) {
       alert('이 크기의 이미지를 처리하지 못했습니다. 자를 위치를 조금 위로 조정해 주세요.');
       return;
@@ -292,31 +333,48 @@
       }
 
       const filename = 'cropped-' + Date.now() + '.jpg';
-      const file = new File([blob], filename, { type: 'image/jpeg' });
+      const file = new File([blob], filename, {
+        type: 'image/jpeg'
+      });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (
+        navigator.canShare &&
+        navigator.canShare({ files: [file] })
+      ) {
         try {
-          await navigator.share({ files: [file], title: '자른 이미지' });
+          await navigator.share({
+            files: [file],
+            title: '자른 이미지'
+          });
           return;
         } catch (err) {
-          if (err && err.name === 'AbortError') return;
+          if (err && err.name === 'AbortError') {
+            return;
+          }
         }
       }
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
+
       a.href = url;
       a.download = filename;
+
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
     }, 'image/jpeg', 0.95);
   });
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+      navigator.serviceWorker
+        .register('./sw.js')
+        .catch(() => {});
     });
   }
 })();
