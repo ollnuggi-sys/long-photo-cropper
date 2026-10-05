@@ -45,7 +45,7 @@ h1 {
 
 .toolbar {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 14px 16px 10px;
 }
@@ -73,13 +73,9 @@ button,
   color: white;
 }
 
-#shareBtn {
-  background: #2563eb;
-  color: white;
-}
-
 button:disabled {
   opacity: .4;
+  cursor: default;
 }
 
 input[type=file] {
@@ -102,6 +98,17 @@ input[type=file] {
   background: #fff7ed;
   color: #9a3412;
   font-size: 13px;
+  line-height: 1.45;
+}
+
+.message {
+  display: none;
+  margin: 0 16px 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #166534;
+  font-size: 13px;
 }
 
 .viewport {
@@ -109,6 +116,8 @@ input[type=file] {
   min-height: 420px;
   overflow: auto;
   background: #d1d5db;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .stage {
@@ -123,6 +132,8 @@ input[type=file] {
   width: 100%;
   height: auto;
   margin: 0;
+  padding: 0;
+  object-position: top left;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -134,6 +145,7 @@ input[type=file] {
   padding: 25px;
   text-align: center;
   color: #6b7280;
+  line-height: 1.6;
 }
 
 [hidden] {
@@ -170,26 +182,15 @@ input[type=file] {
   color: white;
   font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
 }
 
-.message {
-  display: none;
-  margin: 0 16px 10px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  background: #ecfdf5;
-  color: #166534;
-  font-size: 13px;
-}
-
-@media (max-width: 520px) {
-  .toolbar {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .fileLabel {
-    grid-column: 1 / 3;
-  }
+.privacy {
+  padding: 12px 16px 18px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
 }
 </style>
 </head>
@@ -200,6 +201,7 @@ input[type=file] {
 
 <header>
   <h1>긴사진 자르기</h1>
+
   <div class="sub">
     사진은 서버로 전송되지 않고 이 기기 안에서만 처리됩니다.
   </div>
@@ -213,10 +215,6 @@ input[type=file] {
 
   <button id="saveBtn" disabled>
     저장하기
-  </button>
-
-  <button id="shareBtn" disabled>
-    공유하기
   </button>
 
   <input
@@ -233,7 +231,7 @@ input[type=file] {
 </section>
 
 <div class="hint">
-  빨간 선을 움직여 자를 위치를 정하세요.
+  빨간 선을 위아래로 움직여 자를 위치를 맞춘 뒤 저장하세요.
   처음 위치는 원본 기준 416px입니다.
 </div>
 
@@ -247,7 +245,7 @@ input[type=file] {
       긴 스크린샷이나 사진을 선택하면 여기에 표시됩니다.
     </div>
 
-    <img id="preview" hidden>
+    <img id="preview" alt="" hidden>
 
     <div class="cropLine" id="cropLine" hidden>
       <span class="badge" id="lineBadge">416px</span>
@@ -257,10 +255,16 @@ input[type=file] {
 
 </section>
 
+<div class="privacy">
+  선택한 사진과 자른 이미지는 별도 서버에 저장되지 않습니다.
+</div>
+
 </main>
 
 <script>
 (() => {
+
+  "use strict";
 
   const DEFAULT_CUT = 416;
 
@@ -269,9 +273,6 @@ input[type=file] {
 
   const saveBtn =
     document.getElementById("saveBtn");
-
-  const shareBtn =
-    document.getElementById("shareBtn");
 
   const preview =
     document.getElementById("preview");
@@ -299,43 +300,40 @@ input[type=file] {
 
 
   let objectUrl = null;
-
   let originalWidth = 0;
-
   let originalHeight = 0;
-
   let selectedY = DEFAULT_CUT;
-
   let dragging = false;
 
 
   function showMessage(text) {
 
     message.textContent = text;
-
     message.style.display = "block";
 
     clearTimeout(showMessage.timer);
 
     showMessage.timer = setTimeout(() => {
-
       message.style.display = "none";
-
     }, 3000);
-
   }
 
 
   function scale() {
 
-    if (!originalWidth) return 1;
+    if (!originalWidth) {
+      return 1;
+    }
 
     return preview.clientWidth / originalWidth;
-
   }
 
 
   function clampY(y) {
+
+    if (!originalHeight) {
+      return DEFAULT_CUT;
+    }
 
     return Math.max(
       1,
@@ -344,13 +342,14 @@ input[type=file] {
         Math.round(y)
       )
     );
-
   }
 
 
   function updateLine() {
 
-    if (!originalHeight) return;
+    if (!originalHeight || preview.hidden) {
+      return;
+    }
 
     selectedY = clampY(selectedY);
 
@@ -364,7 +363,6 @@ input[type=file] {
       "끝점 " +
       selectedY.toLocaleString() +
       "px";
-
   }
 
 
@@ -373,13 +371,21 @@ input[type=file] {
     const rect =
       preview.getBoundingClientRect();
 
-    const y =
-      (clientY - rect.top) / scale();
+    const currentScale =
+      scale();
 
-    selectedY = clampY(y);
+    if (!currentScale) {
+      return;
+    }
+
+    const y =
+      (clientY - rect.top) /
+      currentScale;
+
+    selectedY =
+      clampY(y);
 
     updateLine();
-
   }
 
 
@@ -389,12 +395,13 @@ input[type=file] {
 
       dragging = true;
 
-      cropLine.setPointerCapture(
-        event.pointerId
-      );
+      try {
+        cropLine.setPointerCapture(
+          event.pointerId
+        );
+      } catch (_) {}
 
       event.preventDefault();
-
     }
   );
 
@@ -403,12 +410,15 @@ input[type=file] {
     "pointermove",
     event => {
 
-      if (!dragging) return;
+      if (!dragging) {
+        return;
+      }
 
-      moveLine(event.clientY);
+      moveLine(
+        event.clientY
+      );
 
       event.preventDefault();
-
     }
   );
 
@@ -420,13 +430,10 @@ input[type=file] {
       dragging = false;
 
       try {
-
         cropLine.releasePointerCapture(
           event.pointerId
         );
-
       } catch (_) {}
-
     }
   );
 
@@ -434,9 +441,7 @@ input[type=file] {
   cropLine.addEventListener(
     "pointercancel",
     () => {
-
       dragging = false;
-
     }
   );
 
@@ -446,17 +451,18 @@ input[type=file] {
     () => {
 
       const file =
-        fileInput.files?.[0];
+        fileInput.files &&
+        fileInput.files[0];
 
-      if (!file) return;
+      if (!file) {
+        return;
+      }
 
 
       if (objectUrl) {
-
         URL.revokeObjectURL(
           objectUrl
         );
-
       }
 
 
@@ -488,8 +494,6 @@ input[type=file] {
 
         saveBtn.disabled = false;
 
-        shareBtn.disabled = false;
-
 
         sizeInfo.textContent =
           "원본 " +
@@ -501,12 +505,17 @@ input[type=file] {
 
         requestAnimationFrame(() => {
 
-          updateLine();
+          requestAnimationFrame(() => {
 
-          viewport.scrollTo(
-            0,
-            0
-          );
+            updateLine();
+
+            viewport.scrollTo({
+              top: 0,
+              left: 0,
+              behavior: "auto"
+            });
+
+          });
 
         });
 
@@ -524,14 +533,17 @@ input[type=file] {
 
       preview.src =
         objectUrl;
-
     }
   );
 
 
   window.addEventListener(
     "resize",
-    updateLine
+    () => {
+      requestAnimationFrame(
+        updateLine
+      );
+    }
   );
 
 
@@ -539,11 +551,10 @@ input[type=file] {
 
     if (
       !originalWidth ||
-      !originalHeight
+      !originalHeight ||
+      !objectUrl
     ) {
-
       return null;
-
     }
 
 
@@ -592,41 +603,6 @@ input[type=file] {
 
 
     return canvas;
-
-  }
-
-
-  function dataUrlToBlob(dataUrl) {
-
-    const parts =
-      dataUrl.split(",");
-
-    const byteString =
-      atob(parts[1]);
-
-    const bytes =
-      new Uint8Array(
-        byteString.length
-      );
-
-
-    for (
-      let i = 0;
-      i < byteString.length;
-      i++
-    ) {
-
-      bytes[i] =
-        byteString.charCodeAt(i);
-
-    }
-
-
-    return new Blob(
-      [bytes],
-      { type: "image/jpeg" }
-    );
-
   }
 
 
@@ -639,6 +615,7 @@ input[type=file] {
         const canvas =
           createCanvas();
 
+
         if (!canvas) {
 
           alert(
@@ -646,15 +623,8 @@ input[type=file] {
           );
 
           return;
-
         }
 
-
-        /*
-          중요:
-          toBlob을 기다리지 않고
-          버튼 클릭 중에 바로 파일을 만듭니다.
-        */
 
         const dataUrl =
           canvas.toDataURL(
@@ -671,6 +641,7 @@ input[type=file] {
 
         link.href =
           dataUrl;
+
 
         link.download =
           "cropped-" +
@@ -708,105 +679,8 @@ input[type=file] {
   );
 
 
-  shareBtn.addEventListener(
-    "click",
-    async () => {
-
-      try {
-
-        const canvas =
-          createCanvas();
-
-        if (!canvas) {
-
-          alert(
-            "이미지를 만들지 못했습니다."
-          );
-
-          return;
-
-        }
-
-
-        /*
-          공유 버튼을 누른 순간
-          동기 방식으로 파일을 만듭니다.
-        */
-
-        const dataUrl =
-          canvas.toDataURL(
-            "image/jpeg",
-            0.95
-          );
-
-
-        const blob =
-          dataUrlToBlob(
-            dataUrl
-          );
-
-
-        const file =
-          new File(
-            [blob],
-            "cropped-" +
-            Date.now() +
-            ".jpg",
-            {
-              type: "image/jpeg"
-            }
-          );
-
-
-        if (
-          !navigator.share ||
-          !navigator.canShare ||
-          !navigator.canShare({
-            files: [file]
-          })
-        ) {
-
-          alert(
-            "이 기기에서는 직접 공유 기능을 지원하지 않습니다."
-          );
-
-          return;
-
-        }
-
-
-        await navigator.share({
-          files: [file],
-          title: "자른 이미지"
-        });
-
-
-      } catch (error) {
-
-        if (
-          error?.name ===
-          "AbortError"
-        ) {
-
-          return;
-
-        }
-
-
-        console.error(error);
-
-        alert(
-          "공유 중 오류가 발생했습니다."
-        );
-
-      }
-
-    }
-  );
-
-
   /*
-    예전 서비스워커 제거
+    예전에 등록된 서비스워커 제거
   */
 
   if (
@@ -819,19 +693,19 @@ input[type=file] {
         registrations => {
 
           registrations.forEach(
-            registration =>
-              registration.unregister()
+            registration => {
+              registration.unregister();
+            }
           );
 
         }
       )
       .catch(() => {});
-
   }
 
 
   /*
-    예전 캐시 제거
+    예전에 저장된 캐시 제거
   */
 
   if ("caches" in window) {
@@ -841,16 +715,15 @@ input[type=file] {
         keys => {
 
           keys.forEach(
-            key =>
-              caches.delete(key)
+            key => {
+              caches.delete(key);
+            }
           );
 
         }
       )
       .catch(() => {});
-
   }
-
 
 })();
 </script>
