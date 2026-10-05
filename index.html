@@ -297,7 +297,58 @@ empty.style.display = 'none';
   window.addEventListener('resize', () => {
     requestAnimationFrame(updateLine);
   });
+saveBtn.addEventListener('click', () => {
+  if (!originalWidth || !originalHeight || !objectUrl) return;
 
+  const cropHeight = clampSelectedY(selectedY);
+
+  let canvas;
+
+  try {
+    canvas = document.createElement('canvas');
+    canvas.width = originalWidth;
+    canvas.height = cropHeight;
+
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    ctx.drawImage(
+      preview,
+      0,
+      0,
+      originalWidth,
+      cropHeight,
+      0,
+      0,
+      originalWidth,
+      cropHeight
+    );
+  } catch (err) {
+    alert('이미지를 처리하지 못했습니다.');
+    return;
+  }
+
+  canvas.toBlob((blob) => {
+    if (!blob) {
+      alert('저장 파일을 만들지 못했습니다.');
+      return;
+    }
+
+    const filename = 'cropped-' + Date.now() + '.jpg';
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 3000);
+  }, 'image/jpeg', 0.95);
+});
   saveBtn.addEventListener('click', async () => {
     if (!originalWidth || !originalHeight || !objectUrl) return;
 
