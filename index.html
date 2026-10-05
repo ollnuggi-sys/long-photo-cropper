@@ -1,416 +1,268 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, viewport-fit=cover"
-  >
-
-  <meta name="theme-color" content="#111827">
-
-  <title>긴사진 자르기</title>
-
-  <style>
-    :root {
-      font-family:
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-
-      color-scheme: light;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      background: #f3f4f6;
-      color: #111827;
-    }
-
-    .app {
-      width: 100%;
-      max-width: 760px;
-      min-height: 100vh;
-      margin: 0 auto;
-      background: #ffffff;
-    }
-
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-
-      padding: 14px 16px 12px;
-
-      background: rgba(255, 255, 255, 0.96);
-      border-bottom: 1px solid #e5e7eb;
-
-      backdrop-filter: blur(10px);
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 20px;
-    }
-
-    .sub {
-      margin-top: 4px;
-      font-size: 12px;
-      color: #6b7280;
-    }
-
-    .toolbar {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-
-      padding: 14px 16px 10px;
-    }
-
-    button,
-    .fileLabel {
-      min-height: 48px;
-
-      border: 0;
-      border-radius: 12px;
-
-      font-size: 15px;
-      font-weight: 700;
-
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      cursor: pointer;
-    }
-
-    .fileLabel {
-      background: #111827;
-      color: white;
-    }
-
-    #saveBtn {
-      background: #ef4444;
-      color: white;
-    }
-
-    #shareBtn {
-      background: #2563eb;
-      color: white;
-    }
-
-    button:disabled {
-      opacity: 0.4;
-      cursor: default;
-    }
-
-    input[type="file"] {
-      display: none;
-    }
-
-    .info {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-
-      padding: 0 16px 10px;
-
-      font-size: 13px;
-      color: #4b5563;
-    }
-
-    .hint {
-      margin: 0 16px 12px;
-
-      padding: 10px 12px;
-
-      border-radius: 10px;
-
-      background: #fff7ed;
-      color: #9a3412;
-
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .status {
-      display: none;
-
-      margin: 0 16px 10px;
-
-      padding: 9px 12px;
-
-      border-radius: 9px;
-
-      background: #ecfdf5;
-      color: #166534;
-
-      font-size: 13px;
-    }
-
-    .viewport {
-      height: calc(100vh - 205px);
-      min-height: 420px;
-
-      overflow: auto;
-
-      background: #d1d5db;
-
-      overscroll-behavior: contain;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    .stage {
-      position: relative;
-
-      width: 100%;
-      min-height: 100%;
-
-      background: #ffffff;
-    }
-
-    #preview {
-      display: block;
-
-      width: 100%;
-      height: auto;
-
-      margin: 0;
-      padding: 0;
-
-      object-position: top left;
-
-      user-select: none;
-      -webkit-user-drag: none;
-    }
-
-    .empty {
-      min-height: 420px;
-
-      display: grid;
-      place-items: center;
-
-      padding: 28px;
-
-      color: #6b7280;
-      text-align: center;
-      line-height: 1.6;
-    }
-
-    [hidden] {
-      display: none !important;
-    }
-
-    .cropLine {
-      position: absolute;
-
-      left: 0;
-      right: 0;
-
-      height: 0;
-
-      border-top: 3px solid #ef4444;
-
-      z-index: 10;
-
-      touch-action: none;
-      cursor: ns-resize;
-    }
-
-    .cropLine::before {
-      content: "";
-
-      position: absolute;
-
-      left: 0;
-      right: 0;
-
-      top: -20px;
-
-      height: 40px;
-    }
-
-    .badge {
-      position: absolute;
-
-      right: 8px;
-      top: -35px;
-
-      padding: 5px 8px;
-
-      border-radius: 8px;
-
-      background: #ef4444;
-      color: white;
-
-      font-size: 12px;
-      font-weight: 800;
-
-      white-space: nowrap;
-
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    }
-
-    .privacy {
-      padding: 12px 16px 18px;
-
-      color: #6b7280;
-
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    @media (max-width: 520px) {
-      .toolbar {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .fileLabel {
-        grid-column: 1 / 3;
-      }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+
+<title>긴사진 자르기</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f3f4f6;
+  color: #111827;
+  font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: white;
+}
+
+header {
+  padding: 14px 16px 12px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 14px 16px 10px;
+}
+
+button,
+.fileLabel {
+  min-height: 48px;
+  border: 0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.fileLabel {
+  background: #111827;
+  color: white;
+}
+
+#saveBtn {
+  background: #ef4444;
+  color: white;
+}
+
+#shareBtn {
+  background: #2563eb;
+  color: white;
+}
+
+button:disabled {
+  opacity: .4;
+}
+
+input[type=file] {
+  display: none;
+}
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 16px 10px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.hint {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13px;
+}
+
+.viewport {
+  height: calc(100vh - 195px);
+  min-height: 420px;
+  overflow: auto;
+  background: #d1d5db;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  background: white;
+}
+
+#preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.empty {
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  padding: 25px;
+  text-align: center;
+  color: #6b7280;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.cropLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 3px solid #ef4444;
+  z-index: 10;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.cropLine::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -20px;
+  height: 40px;
+}
+
+.badge {
+  position: absolute;
+  right: 8px;
+  top: -34px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #ef4444;
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.message {
+  display: none;
+  margin: 0 16px 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #166534;
+  font-size: 13px;
+}
+
+@media (max-width: 520px) {
+  .toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fileLabel {
+    grid-column: 1 / 3;
+  }
+}
+</style>
 </head>
 
 <body>
 
 <main class="app">
 
-  <header>
-    <h1>긴사진 자르기</h1>
-
-    <div class="sub">
-      사진은 서버로 전송되지 않고 이 기기 안에서만 처리됩니다.
-    </div>
-  </header>
-
-
-  <section class="toolbar">
-
-    <label
-      class="fileLabel"
-      for="fileInput"
-    >
-      사진 불러오기
-    </label>
-
-    <button
-      id="saveBtn"
-      disabled
-    >
-      저장하기
-    </button>
-
-    <button
-      id="shareBtn"
-      disabled
-    >
-      공유하기
-    </button>
-
-    <input
-      id="fileInput"
-      type="file"
-      accept="image/*"
-    >
-
-  </section>
-
-
-  <section class="info">
-
-    <span id="sizeInfo">
-      사진을 선택해 주세요
-    </span>
-
-    <strong id="cutInfo">
-      끝점 416px
-    </strong>
-
-  </section>
-
-
-  <div class="hint">
-    빨간 선을 위아래로 움직여 자를 위치를 맞춘 뒤 저장하세요.
-    처음 위치는 원본 기준 416px입니다.
+<header>
+  <h1>긴사진 자르기</h1>
+  <div class="sub">
+    사진은 서버로 전송되지 않고 이 기기 안에서만 처리됩니다.
   </div>
+</header>
 
+<section class="toolbar">
 
-  <div
-    class="status"
-    id="status"
-  ></div>
+  <label class="fileLabel" for="fileInput">
+    사진 불러오기
+  </label>
 
+  <button id="saveBtn" disabled>
+    저장하기
+  </button>
 
-  <section
-    class="viewport"
-    id="viewport"
+  <button id="shareBtn" disabled>
+    공유하기
+  </button>
+
+  <input
+    id="fileInput"
+    type="file"
+    accept="image/*"
   >
 
-    <div
-      class="stage"
-      id="stage"
-    >
+</section>
 
-      <div
-        class="empty"
-        id="empty"
-      >
-        긴 스크린샷이나 사진을 선택하면
-        여기에 표시됩니다.
-      </div>
+<section class="info">
+  <span id="sizeInfo">사진을 선택해 주세요</span>
+  <strong id="cutInfo">끝점 416px</strong>
+</section>
 
+<div class="hint">
+  빨간 선을 움직여 자를 위치를 정하세요.
+  처음 위치는 원본 기준 416px입니다.
+</div>
 
-      <img
-        id="preview"
-        alt=""
-        hidden
-      >
+<div class="message" id="message"></div>
 
+<section class="viewport" id="viewport">
 
-      <div
-        class="cropLine"
-        id="cropLine"
-        hidden
-      >
+  <div class="stage">
 
-        <span
-          class="badge"
-          id="lineBadge"
-        >
-          416px
-        </span>
-
-      </div>
-
+    <div class="empty" id="empty">
+      긴 스크린샷이나 사진을 선택하면 여기에 표시됩니다.
     </div>
 
-  </section>
+    <img id="preview" hidden>
 
+    <div class="cropLine" id="cropLine" hidden>
+      <span class="badge" id="lineBadge">416px</span>
+    </div>
 
-  <div class="privacy">
-    선택한 사진과 자른 이미지는 별도 서버에 저장되지 않습니다.
   </div>
+
+</section>
 
 </main>
 
-
 <script>
-
 (() => {
 
-  "use strict";
-
-
   const DEFAULT_CUT = 416;
-
 
   const fileInput =
     document.getElementById("fileInput");
@@ -442,8 +294,8 @@
   const empty =
     document.getElementById("empty");
 
-  const status =
-    document.getElementById("status");
+  const message =
+    document.getElementById("message");
 
 
   let objectUrl = null;
@@ -457,71 +309,53 @@
   let dragging = false;
 
 
+  function showMessage(text) {
 
-  function showStatus(message) {
+    message.textContent = text;
 
-    status.textContent = message;
+    message.style.display = "block";
 
-    status.style.display = "block";
+    clearTimeout(showMessage.timer);
 
-    clearTimeout(showStatus.timer);
+    showMessage.timer = setTimeout(() => {
 
-    showStatus.timer = setTimeout(() => {
-
-      status.style.display = "none";
+      message.style.display = "none";
 
     }, 3000);
 
   }
 
 
+  function scale() {
 
-  function displayScale() {
-
-    if (!originalWidth) {
-      return 1;
-    }
+    if (!originalWidth) return 1;
 
     return preview.clientWidth / originalWidth;
 
   }
 
 
-
-  function clampSelectedY(value) {
-
-    if (!originalHeight) {
-      return DEFAULT_CUT;
-    }
+  function clampY(y) {
 
     return Math.max(
       1,
       Math.min(
         originalHeight,
-        Math.round(value)
+        Math.round(y)
       )
     );
 
   }
 
 
-
   function updateLine() {
 
-    if (
-      !originalHeight ||
-      preview.hidden
-    ) {
-      return;
-    }
+    if (!originalHeight) return;
 
-    const scale = displayScale();
-
-    selectedY =
-      clampSelectedY(selectedY);
+    selectedY = clampY(selectedY);
 
     cropLine.style.top =
-      (selectedY * scale) + "px";
+      (selectedY * scale()) + "px";
 
     lineBadge.textContent =
       selectedY.toLocaleString() + "px";
@@ -534,29 +368,19 @@
   }
 
 
-
-  function setSelectedFromClientY(clientY) {
+  function moveLine(clientY) {
 
     const rect =
       preview.getBoundingClientRect();
 
-    const scale =
-      displayScale();
+    const y =
+      (clientY - rect.top) / scale();
 
-    if (!scale) {
-      return;
-    }
-
-    const yOnImage =
-      (clientY - rect.top) / scale;
-
-    selectedY =
-      clampSelectedY(yOnImage);
+    selectedY = clampY(y);
 
     updateLine();
 
   }
-
 
 
   cropLine.addEventListener(
@@ -565,29 +389,8 @@
 
       dragging = true;
 
-      try {
-        cropLine.setPointerCapture(
-          event.pointerId
-        );
-      } catch (_) {}
-
-      event.preventDefault();
-
-    }
-  );
-
-
-
-  cropLine.addEventListener(
-    "pointermove",
-    event => {
-
-      if (!dragging) {
-        return;
-      }
-
-      setSelectedFromClientY(
-        event.clientY
+      cropLine.setPointerCapture(
+        event.pointerId
       );
 
       event.preventDefault();
@@ -595,6 +398,19 @@
     }
   );
 
+
+  cropLine.addEventListener(
+    "pointermove",
+    event => {
+
+      if (!dragging) return;
+
+      moveLine(event.clientY);
+
+      event.preventDefault();
+
+    }
+  );
 
 
   cropLine.addEventListener(
@@ -615,7 +431,6 @@
   );
 
 
-
   cropLine.addEventListener(
     "pointercancel",
     () => {
@@ -626,18 +441,14 @@
   );
 
 
-
   fileInput.addEventListener(
     "change",
     () => {
 
       const file =
-        fileInput.files &&
-        fileInput.files[0];
+        fileInput.files?.[0];
 
-      if (!file) {
-        return;
-      }
+      if (!file) return;
 
 
       if (objectUrl) {
@@ -675,7 +486,6 @@
 
         cropLine.hidden = false;
 
-
         saveBtn.disabled = false;
 
         shareBtn.disabled = false;
@@ -691,17 +501,12 @@
 
         requestAnimationFrame(() => {
 
-          requestAnimationFrame(() => {
+          updateLine();
 
-            updateLine();
-
-            viewport.scrollTo({
-              top: 0,
-              left: 0,
-              behavior: "auto"
-            });
-
-          });
+          viewport.scrollTo(
+            0,
+            0
+          );
 
         });
 
@@ -711,7 +516,7 @@
       preview.onerror = () => {
 
         alert(
-          "이 사진을 불러오지 못했습니다."
+          "사진을 불러오지 못했습니다."
         );
 
       };
@@ -720,279 +525,288 @@
       preview.src =
         objectUrl;
 
-  });
-
-
-
-  window.addEventListener(
-    "resize",
-    () => {
-
-      requestAnimationFrame(
-        updateLine
-      );
-
     }
   );
 
 
+  window.addEventListener(
+    "resize",
+    updateLine
+  );
 
-  function makeCroppedBlob(callback) {
+
+  function createCanvas() {
 
     if (
       !originalWidth ||
-      !originalHeight ||
-      !objectUrl
+      !originalHeight
     ) {
 
-      return;
+      return null;
 
     }
 
 
     const cropHeight =
-      clampSelectedY(selectedY);
+      clampY(selectedY);
 
 
-    let canvas;
-
-    let ctx;
-
-
-    try {
-
-      canvas =
-        document.createElement(
-          "canvas"
-        );
-
-      canvas.width =
-        originalWidth;
-
-      canvas.height =
-        cropHeight;
-
-
-      ctx =
-        canvas.getContext(
-          "2d",
-          { alpha: false }
-        );
-
-
-      if (!ctx) {
-
-        throw new Error(
-          "canvas unavailable"
-        );
-
-      }
-
-
-      ctx.drawImage(
-        preview,
-
-        0,
-        0,
-        originalWidth,
-        cropHeight,
-
-        0,
-        0,
-        originalWidth,
-        cropHeight
+    const canvas =
+      document.createElement(
+        "canvas"
       );
 
 
-    } catch (error) {
+    canvas.width =
+      originalWidth;
 
-      alert(
-        "이미지를 처리하지 못했습니다."
+    canvas.height =
+      cropHeight;
+
+
+    const ctx =
+      canvas.getContext(
+        "2d",
+        { alpha: false }
       );
 
-      return;
+
+    if (!ctx) {
+      return null;
+    }
+
+
+    ctx.drawImage(
+      preview,
+
+      0,
+      0,
+      originalWidth,
+      cropHeight,
+
+      0,
+      0,
+      originalWidth,
+      cropHeight
+    );
+
+
+    return canvas;
+
+  }
+
+
+  function dataUrlToBlob(dataUrl) {
+
+    const parts =
+      dataUrl.split(",");
+
+    const byteString =
+      atob(parts[1]);
+
+    const bytes =
+      new Uint8Array(
+        byteString.length
+      );
+
+
+    for (
+      let i = 0;
+      i < byteString.length;
+      i++
+    ) {
+
+      bytes[i] =
+        byteString.charCodeAt(i);
 
     }
 
 
-    canvas.toBlob(
-
-      blob => {
-
-        if (!blob) {
-
-          alert(
-            "이미지 파일을 만들지 못했습니다."
-          );
-
-          return;
-
-        }
-
-        callback(blob);
-
-      },
-
-      "image/jpeg",
-
-      0.95
-
+    return new Blob(
+      [bytes],
+      { type: "image/jpeg" }
     );
 
   }
-
 
 
   saveBtn.addEventListener(
     "click",
     () => {
 
-      makeCroppedBlob(
-        blob => {
+      try {
 
-          const filename =
-            "cropped-" +
-            Date.now() +
-            ".jpg";
+        const canvas =
+          createCanvas();
 
+        if (!canvas) {
 
-          const url =
-            URL.createObjectURL(
-              blob
-            );
-
-
-          const link =
-            document.createElement(
-              "a"
-            );
-
-
-          link.href =
-            url;
-
-          link.download =
-            filename;
-
-
-          link.style.display =
-            "none";
-
-
-          document.body.appendChild(
-            link
+          alert(
+            "이미지를 만들지 못했습니다."
           );
 
-
-          link.click();
-
-
-          link.remove();
-
-
-          showStatus(
-            "저장을 시작했습니다."
-          );
-
-
-          setTimeout(
-            () => {
-
-              URL.revokeObjectURL(
-                url
-              );
-
-            },
-
-            10000
-          );
+          return;
 
         }
-      );
+
+
+        /*
+          중요:
+          toBlob을 기다리지 않고
+          버튼 클릭 중에 바로 파일을 만듭니다.
+        */
+
+        const dataUrl =
+          canvas.toDataURL(
+            "image/jpeg",
+            0.95
+          );
+
+
+        const link =
+          document.createElement(
+            "a"
+          );
+
+
+        link.href =
+          dataUrl;
+
+        link.download =
+          "cropped-" +
+          Date.now() +
+          ".jpg";
+
+
+        document.body.appendChild(
+          link
+        );
+
+
+        link.click();
+
+
+        link.remove();
+
+
+        showMessage(
+          "저장했습니다."
+        );
+
+
+      } catch (error) {
+
+        console.error(error);
+
+        alert(
+          "저장 중 오류가 발생했습니다."
+        );
+
+      }
 
     }
   );
-
 
 
   shareBtn.addEventListener(
     "click",
-    () => {
+    async () => {
 
-      makeCroppedBlob(
-        async blob => {
+      try {
 
-          const filename =
-            "cropped-" +
-            Date.now() +
-            ".jpg";
+        const canvas =
+          createCanvas();
 
+        if (!canvas) {
 
-          const file =
-            new File(
-              [blob],
-              filename,
-              {
-                type: "image/jpeg"
-              }
-            );
+          alert(
+            "이미지를 만들지 못했습니다."
+          );
 
-
-          if (
-            navigator.share &&
-            navigator.canShare &&
-            navigator.canShare({
-              files: [file]
-            })
-          ) {
-
-            try {
-
-              await navigator.share({
-                files: [file],
-                title: "자른 이미지"
-              });
-
-            } catch (error) {
-
-              if (
-                error &&
-                error.name ===
-                "AbortError"
-              ) {
-
-                return;
-
-              }
-
-              alert(
-                "공유하지 못했습니다."
-              );
-
-            }
-
-          } else {
-
-            alert(
-              "이 브라우저에서는 파일 공유 기능을 지원하지 않습니다."
-            );
-
-          }
+          return;
 
         }
-      );
+
+
+        /*
+          공유 버튼을 누른 순간
+          동기 방식으로 파일을 만듭니다.
+        */
+
+        const dataUrl =
+          canvas.toDataURL(
+            "image/jpeg",
+            0.95
+          );
+
+
+        const blob =
+          dataUrlToBlob(
+            dataUrl
+          );
+
+
+        const file =
+          new File(
+            [blob],
+            "cropped-" +
+            Date.now() +
+            ".jpg",
+            {
+              type: "image/jpeg"
+            }
+          );
+
+
+        if (
+          !navigator.share ||
+          !navigator.canShare ||
+          !navigator.canShare({
+            files: [file]
+          })
+        ) {
+
+          alert(
+            "이 기기에서는 직접 공유 기능을 지원하지 않습니다."
+          );
+
+          return;
+
+        }
+
+
+        await navigator.share({
+          files: [file],
+          title: "자른 이미지"
+        });
+
+
+      } catch (error) {
+
+        if (
+          error?.name ===
+          "AbortError"
+        ) {
+
+          return;
+
+        }
+
+
+        console.error(error);
+
+        alert(
+          "공유 중 오류가 발생했습니다."
+        );
+
+      }
 
     }
   );
 
 
-
   /*
-    이전 버전의 서비스워커와 캐시를
-    자동으로 제거합니다.
-
-    이 버전부터는 최신 파일을
-    바로 불러오도록 합니다.
+    예전 서비스워커 제거
   */
 
   if (
@@ -1005,11 +819,8 @@
         registrations => {
 
           registrations.forEach(
-            registration => {
-
-              registration.unregister();
-
-            }
+            registration =>
+              registration.unregister()
           );
 
         }
@@ -1019,19 +830,19 @@
   }
 
 
+  /*
+    예전 캐시 제거
+  */
+
   if ("caches" in window) {
 
-    caches
-      .keys()
+    caches.keys()
       .then(
         keys => {
 
           keys.forEach(
-            key => {
-
-              caches.delete(key);
-
-            }
+            key =>
+              caches.delete(key)
           );
 
         }
@@ -1042,7 +853,6 @@
 
 
 })();
-
 </script>
 
 </body>
