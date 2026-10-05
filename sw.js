@@ -1,4 +1,4 @@
-const CACHE = 'long-photo-cropper-v1';
+const CACHE = 'long-photo-cropper-v2';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', event => {
