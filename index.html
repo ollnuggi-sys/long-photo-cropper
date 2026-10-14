@@ -1,1787 +1,444 @@
 <!doctype html>
 <html lang="ko">
-
 <head>
 <meta charset="utf-8">
-
-<meta
-  name="viewport"
-  content="width=device-width,initial-scale=1,viewport-fit=cover"
->
-
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-
-<!--
-  앞으로 프로그램을 수정할 때
-  이 버전 숫자를 반드시 올립니다.
--->
-<meta
-  name="app-version"
-  content="1.0.0"
->
-
-<meta
-  name="app-update-message"
-  content="자동 업데이트 확인 기능이 추가되었습니다."
->
-
+<meta name="app-version" content="1.0.1">
+<meta name="app-update-message" content="저장 후 바로 공유하기와 익명 사용 현황 통계 기능이 추가되었습니다.">
 <title>긴사진 자르기</title>
 
-<style>
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: #f3f4f6;
-  color: #111827;
-
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-}
-
-.app {
-  max-width: 760px;
-  margin: 0 auto;
-
-  min-height: 100vh;
-
-  background: white;
-}
-
-header {
-  padding: 14px 16px 12px;
-
-  background: white;
-
-  border-bottom: 1px solid #e5e7eb;
-}
-
-h1 {
-  margin: 0;
-
-  font-size: 20px;
-}
-
-.sub {
-  margin-top: 4px;
-
-  font-size: 12px;
-
-  color: #6b7280;
-}
-
-.toolbar {
-  display: grid;
-
-  grid-template-columns: 1fr 1fr;
-
-  gap: 8px;
-
-  padding: 14px 16px 10px;
-}
-
-button,
-.fileLabel {
-  min-height: 48px;
-
-  border: 0;
-
-  border-radius: 12px;
-
-  font-size: 15px;
-
-  font-weight: 700;
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  cursor: pointer;
-}
-
-.fileLabel {
-  background: #111827;
-
-  color: white;
-}
-
-#saveBtn {
-  background: #ef4444;
-
-  color: white;
-
-  transition:
-    background .2s ease,
-    transform .1s ease;
-}
-
-#saveBtn.saved {
-  background: #16a34a;
-}
-
-button:disabled {
-  opacity: .4;
-
-  cursor: default;
-}
-
-input[type=file] {
-  display: none;
-}
-
-.info {
-  display: flex;
-
-  justify-content: space-between;
-
-  gap: 10px;
-
-  padding: 0 16px 10px;
-
-  font-size: 13px;
-
-  color: #4b5563;
-}
-
-.hint {
-  margin: 0 16px 12px;
-
-  padding: 10px 12px;
-
-  border-radius: 10px;
-
-  background: #fff7ed;
-
-  color: #9a3412;
-
-  font-size: 13px;
-
-  line-height: 1.45;
-}
-
-
-/* 저장 완료 메시지 */
-
-.message {
-  display: none;
-
-  position: fixed;
-
-  left: 50%;
-
-  bottom:
-    max(
-      24px,
-      env(safe-area-inset-bottom)
-    );
-
-  transform: translateX(-50%);
-
-  z-index: 12000;
-
-  width: calc(100% - 32px);
-
-  max-width: 430px;
-
-  padding: 14px 18px;
-
-  border-radius: 14px;
-
-  background: #111827;
-
-  color: white;
-
-  text-align: center;
-
-  font-size: 16px;
-
-  font-weight: 800;
-
-  box-shadow:
-    0 8px 30px
-    rgba(0,0,0,.25);
-}
-
-
-/* 사진 영역 */
-
-.viewport {
-  height: calc(100vh - 195px);
-
-  min-height: 420px;
-
-  overflow: auto;
-
-  background: #d1d5db;
-
-  overscroll-behavior: contain;
-
-  -webkit-overflow-scrolling: touch;
-}
-
-.stage {
-  position: relative;
-
-  width: 100%;
-
-  min-height: 100%;
-
-  background: white;
-}
-
-#preview {
-  display: block;
-
-  width: 100%;
-
-  height: auto;
-
-  margin: 0;
-
-  padding: 0;
-
-  object-position: top left;
-
-  user-select: none;
-
-  -webkit-user-drag: none;
-}
-
-.empty {
-  min-height: 420px;
-
-  display: grid;
-
-  place-items: center;
-
-  padding: 25px;
-
-  text-align: center;
-
-  color: #6b7280;
-
-  line-height: 1.6;
-}
-
-[hidden] {
-  display: none !important;
-}
-
-
-/* 빨간 자르기 선 */
-
-.cropLine {
-  position: absolute;
-
-  left: 0;
-
-  right: 0;
-
-  height: 0;
-
-  border-top:
-    3px solid #ef4444;
-
-  z-index: 10;
-
-  cursor: ns-resize;
-
-  touch-action: none;
-}
-
-.cropLine::before {
-  content: "";
-
-  position: absolute;
-
-  left: 0;
-
-  right: 0;
-
-  top: -20px;
-
-  height: 40px;
-}
-
-.badge {
-  position: absolute;
-
-  right: 8px;
-
-  top: -34px;
-
-  padding: 5px 8px;
-
-  border-radius: 8px;
-
-  background: #ef4444;
-
-  color: white;
-
-  font-size: 12px;
-
-  font-weight: 800;
-
-  white-space: nowrap;
-
-  box-shadow:
-    0 2px 8px
-    rgba(0,0,0,.15);
-}
-
-.privacy {
-  padding: 12px 16px 18px;
-
-  color: #6b7280;
-
-  font-size: 12px;
-
-  line-height: 1.6;
-}
-
-
-/* =========================
-   업데이트 안내창
-   ========================= */
-
-.updateOverlay {
-  position: fixed;
-
-  inset: 0;
-
-  z-index: 20000;
-
-  display: grid;
-
-  place-items: center;
-
-  padding: 20px;
-
-  background:
-    rgba(17,24,39,.55);
-}
-
-.updateCard {
-  width: 100%;
-
-  max-width: 390px;
-
-  padding: 24px 20px 18px;
-
-  border-radius: 20px;
-
-  background: white;
-
-  box-shadow:
-    0 20px 60px
-    rgba(0,0,0,.28);
-}
-
-.updateIcon {
-  width: 52px;
-
-  height: 52px;
-
-  margin: 0 auto 14px;
-
-  display: grid;
-
-  place-items: center;
-
-  border-radius: 50%;
-
-  background: #eff6ff;
-
-  font-size: 28px;
-}
-
-.updateTitle {
-  margin: 0;
-
-  text-align: center;
-
-  font-size: 21px;
-
-  font-weight: 800;
-}
-
-.updateVersion {
-  margin-top: 8px;
-
-  text-align: center;
-
-  color: #2563eb;
-
-  font-size: 13px;
-
-  font-weight: 700;
-}
-
-.updateDescription {
-  margin: 14px 0 20px;
-
-  color: #4b5563;
-
-  text-align: center;
-
-  font-size: 14px;
-
-  line-height: 1.55;
-}
-
-.updateButtons {
-  display: grid;
-
-  grid-template-columns:
-    1fr 1.4fr;
-
-  gap: 8px;
-}
-
-.updateButtons button {
-  width: 100%;
-}
-
-#laterBtn {
-  background: #e5e7eb;
-
-  color: #374151;
-}
-
-#updateNowBtn {
-  background: #2563eb;
-
-  color: white;
-}
-
-</style>
-
-</head>
-
-
-<body>
-
-<main class="app">
-
-<header>
-
-  <h1>
-    긴사진 자르기
-  </h1>
-
-  <div class="sub">
-    사진은 서버로 전송되지 않고
-    이 기기 안에서만 처리됩니다.
-  </div>
-
-</header>
-
-
-<section class="toolbar">
-
-  <label
-    class="fileLabel"
-    for="fileInput"
-  >
-    사진 불러오기
-  </label>
-
-  <button
-    id="saveBtn"
-    disabled
-  >
-    저장하기
-  </button>
-
-  <input
-    id="fileInput"
-    type="file"
-    accept="image/*"
-  >
-
-</section>
-
-
-<section class="info">
-
-  <span id="sizeInfo">
-    사진을 선택해 주세요
-  </span>
-
-  <strong id="cutInfo">
-    끝점 416px
-  </strong>
-
-</section>
-
-
-<div class="hint">
-  빨간 선을 위아래로 움직여
-  자를 위치를 맞춘 뒤 저장하세요.
-  처음 위치는 원본 기준 416px입니다.
-</div>
-
-
-<div
-  class="message"
-  id="message"
->
-  ✓ 저장되었습니다
-</div>
-
-
-<section
-  class="viewport"
-  id="viewport"
->
-
-  <div class="stage">
-
-    <div
-      class="empty"
-      id="empty"
-    >
-      긴 스크린샷이나 사진을 선택하면
-      여기에 표시됩니다.
-    </div>
-
-    <img
-      id="preview"
-      alt=""
-      hidden
-    >
-
-    <div
-      class="cropLine"
-      id="cropLine"
-      hidden
-    >
-
-      <span
-        class="badge"
-        id="lineBadge"
-      >
-        416px
-      </span>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-<div class="privacy">
-
-  선택한 사진과 자른 이미지는
-  별도 서버에 저장되지 않습니다.
-
-  <br>
-
-  버전
-  <span id="versionLabel"></span>
-
-</div>
-
-</main>
-
-
-<!-- =========================
-     업데이트 안내창
-     ========================= -->
-
-<div
-  class="updateOverlay"
-  id="updateOverlay"
-  hidden
->
-
-  <div class="updateCard">
-
-    <div class="updateIcon">
-      ↻
-    </div>
-
-    <h2 class="updateTitle">
-      새로운 버전이 있습니다
-    </h2>
-
-    <div
-      class="updateVersion"
-      id="updateVersion"
-    ></div>
-
-    <div
-      class="updateDescription"
-      id="updateDescription"
-    >
-      더 안정적인 사용을 위해
-      최신 버전으로 업데이트해 주세요.
-    </div>
-
-    <div class="updateButtons">
-
-      <button
-        id="laterBtn"
-        type="button"
-      >
-        나중에
-      </button>
-
-      <button
-        id="updateNowBtn"
-        type="button"
-      >
-        지금 업데이트
-      </button>
-
-    </div>
-
-  </div>
-
-</div>
-
-
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-SYX6P6W3DK"></script>
 <script>
-
-(() => {
-
-  "use strict";
-
-
-  /* =========================
-     현재 앱 버전
-     ========================= */
-
-  const APP_VERSION =
-    document
-      .querySelector(
-        'meta[name="app-version"]'
-      )
-      .content
-      .trim();
-
-
-  const VERSION_STORAGE_KEY =
-    "longPhotoCropperVersion";
-
-  const DISMISSED_VERSION_KEY =
-    "longPhotoCropperDismissedVersion";
-
-
-  const versionLabel =
-    document.getElementById(
-      "versionLabel"
-    );
-
-
-  versionLabel.textContent =
-    APP_VERSION;
-
-
-
-  /* =========================
-     사진 자르기
-     ========================= */
-
-  const DEFAULT_CUT = 416;
-
-
-  const fileInput =
-    document.getElementById(
-      "fileInput"
-    );
-
-  const saveBtn =
-    document.getElementById(
-      "saveBtn"
-    );
-
-  const preview =
-    document.getElementById(
-      "preview"
-    );
-
-  const cropLine =
-    document.getElementById(
-      "cropLine"
-    );
-
-  const lineBadge =
-    document.getElementById(
-      "lineBadge"
-    );
-
-  const sizeInfo =
-    document.getElementById(
-      "sizeInfo"
-    );
-
-  const cutInfo =
-    document.getElementById(
-      "cutInfo"
-    );
-
-  const viewport =
-    document.getElementById(
-      "viewport"
-    );
-
-  const empty =
-    document.getElementById(
-      "empty"
-    );
-
-  const message =
-    document.getElementById(
-      "message"
-    );
-
-
-  let objectUrl = null;
-
-  let originalWidth = 0;
-
-  let originalHeight = 0;
-
-  let selectedY =
-    DEFAULT_CUT;
-
-  let dragging =
-    false;
-
-  let messageTimer =
-    null;
-
-  let buttonTimer =
-    null;
-
-
-
-  function showToast(
-    text,
-    duration = 2200
-  ) {
-
-    clearTimeout(
-      messageTimer
-    );
-
-    message.textContent =
-      text;
-
-    message.style.display =
-      "block";
-
-
-    messageTimer =
-      setTimeout(
-        () => {
-
-          message.style.display =
-            "none";
-
-        },
-        duration
-      );
-
-  }
-
-
-
-  function showSaveSuccess() {
-
-    clearTimeout(
-      buttonTimer
-    );
-
-
-    showToast(
-      "✓ 저장되었습니다"
-    );
-
-
-    saveBtn.textContent =
-      "저장 완료 ✓";
-
-    saveBtn.classList.add(
-      "saved"
-    );
-
-
-    buttonTimer =
-      setTimeout(
-        () => {
-
-          saveBtn.textContent =
-            "저장하기";
-
-          saveBtn.classList.remove(
-            "saved"
-          );
-
-        },
-        2200
-      );
-
-  }
-
-
-
-  function scale() {
-
-    if (!originalWidth) {
-
-      return 1;
-
-    }
-
-
-    return (
-      preview.clientWidth /
-      originalWidth
-    );
-
-  }
-
-
-
-  function clampY(y) {
-
-    if (!originalHeight) {
-
-      return DEFAULT_CUT;
-
-    }
-
-
-    return Math.max(
-      1,
-      Math.min(
-        originalHeight,
-        Math.round(y)
-      )
-    );
-
-  }
-
-
-
-  function updateLine() {
-
-    if (
-      !originalHeight ||
-      preview.hidden
-    ) {
-
-      return;
-
-    }
-
-
-    selectedY =
-      clampY(
-        selectedY
-      );
-
-
-    cropLine.style.top =
-      (
-        selectedY *
-        scale()
-      ) +
-      "px";
-
-
-    lineBadge.textContent =
-      selectedY
-        .toLocaleString() +
-      "px";
-
-
-    cutInfo.textContent =
-      "끝점 " +
-      selectedY
-        .toLocaleString() +
-      "px";
-
-  }
-
-
-
-  function moveLine(
-    clientY
-  ) {
-
-    const rect =
-      preview
-        .getBoundingClientRect();
-
-
-    const currentScale =
-      scale();
-
-
-    if (!currentScale) {
-
-      return;
-
-    }
-
-
-    const y =
-      (
-        clientY -
-        rect.top
-      ) /
-      currentScale;
-
-
-    selectedY =
-      clampY(y);
-
-
-    updateLine();
-
-  }
-
-
-
-  cropLine.addEventListener(
-    "pointerdown",
-    event => {
-
-      dragging =
-        true;
-
-
-      try {
-
-        cropLine
-          .setPointerCapture(
-            event.pointerId
-          );
-
-      } catch (_) {}
-
-
-      event.preventDefault();
-
-    }
-  );
-
-
-
-  cropLine.addEventListener(
-    "pointermove",
-    event => {
-
-      if (!dragging) {
-
-        return;
-
-      }
-
-
-      moveLine(
-        event.clientY
-      );
-
-
-      event.preventDefault();
-
-    }
-  );
-
-
-
-  cropLine.addEventListener(
-    "pointerup",
-    event => {
-
-      dragging =
-        false;
-
-
-      try {
-
-        cropLine
-          .releasePointerCapture(
-            event.pointerId
-          );
-
-      } catch (_) {}
-
-    }
-  );
-
-
-
-  cropLine.addEventListener(
-    "pointercancel",
-    () => {
-
-      dragging =
-        false;
-
-    }
-  );
-
-
-
-  fileInput.addEventListener(
-    "change",
-    () => {
-
-      const file =
-        fileInput.files &&
-        fileInput.files[0];
-
-
-      if (!file) {
-
-        return;
-
-      }
-
-
-      clearTimeout(
-        buttonTimer
-      );
-
-
-      saveBtn.textContent =
-        "저장하기";
-
-
-      saveBtn.classList.remove(
-        "saved"
-      );
-
-
-      if (objectUrl) {
-
-        URL.revokeObjectURL(
-          objectUrl
-        );
-
-      }
-
-
-      objectUrl =
-        URL.createObjectURL(
-          file
-        );
-
-
-      preview.onload =
-        () => {
-
-          originalWidth =
-            preview.naturalWidth;
-
-
-          originalHeight =
-            preview.naturalHeight;
-
-
-          selectedY =
-            Math.min(
-              DEFAULT_CUT,
-              originalHeight
-            );
-
-
-          empty.hidden =
-            true;
-
-
-          preview.hidden =
-            false;
-
-
-          cropLine.hidden =
-            false;
-
-
-          saveBtn.disabled =
-            false;
-
-
-          sizeInfo.textContent =
-            "원본 " +
-            originalWidth
-              .toLocaleString() +
-            " × " +
-            originalHeight
-              .toLocaleString() +
-            " px";
-
-
-          requestAnimationFrame(
-            () => {
-
-              requestAnimationFrame(
-                () => {
-
-                  updateLine();
-
-
-                  viewport.scrollTo({
-                    top: 0,
-                    left: 0,
-                    behavior: "auto"
-                  });
-
-                }
-              );
-
-            }
-          );
-
-        };
-
-
-      preview.onerror =
-        () => {
-
-          alert(
-            "사진을 불러오지 못했습니다."
-          );
-
-        };
-
-
-      preview.src =
-        objectUrl;
-
-    }
-  );
-
-
-
-  window.addEventListener(
-    "resize",
-    () => {
-
-      requestAnimationFrame(
-        updateLine
-      );
-
-    }
-  );
-
-
-
-  function createCanvas() {
-
-    if (
-      !originalWidth ||
-      !originalHeight ||
-      !objectUrl
-    ) {
-
-      return null;
-
-    }
-
-
-    const cropHeight =
-      clampY(
-        selectedY
-      );
-
-
-    const canvas =
-      document.createElement(
-        "canvas"
-      );
-
-
-    canvas.width =
-      originalWidth;
-
-
-    canvas.height =
-      cropHeight;
-
-
-    const ctx =
-      canvas.getContext(
-        "2d",
-        {
-          alpha: false
-        }
-      );
-
-
-    if (!ctx) {
-
-      return null;
-
-    }
-
-
-    ctx.drawImage(
-      preview,
-
-      0,
-      0,
-      originalWidth,
-      cropHeight,
-
-      0,
-      0,
-      originalWidth,
-      cropHeight
-    );
-
-
-    return canvas;
-
-  }
-
-
-
-  saveBtn.addEventListener(
-    "click",
-    () => {
-
-      try {
-
-        const canvas =
-          createCanvas();
-
-
-        if (!canvas) {
-
-          alert(
-            "이미지를 만들지 못했습니다."
-          );
-
-          return;
-
-        }
-
-
-        const dataUrl =
-          canvas.toDataURL(
-            "image/jpeg",
-            0.95
-          );
-
-
-        const link =
-          document.createElement(
-            "a"
-          );
-
-
-        link.href =
-          dataUrl;
-
-
-        link.download =
-          "cropped-" +
-          Date.now() +
-          ".jpg";
-
-
-        document.body
-          .appendChild(
-            link
-          );
-
-
-        link.click();
-
-
-        link.remove();
-
-
-        showSaveSuccess();
-
-
-      } catch (error) {
-
-        console.error(
-          error
-        );
-
-
-        alert(
-          "저장 중 오류가 발생했습니다."
-        );
-
-      }
-
-    }
-  );
-
-
-
-  /* =========================
-     업데이트 확인 기능
-     ========================= */
-
-  const updateOverlay =
-    document.getElementById(
-      "updateOverlay"
-    );
-
-
-  const updateVersion =
-    document.getElementById(
-      "updateVersion"
-    );
-
-
-  const updateDescription =
-    document.getElementById(
-      "updateDescription"
-    );
-
-
-  const updateNowBtn =
-    document.getElementById(
-      "updateNowBtn"
-    );
-
-
-  const laterBtn =
-    document.getElementById(
-      "laterBtn"
-    );
-
-
-  let pendingVersion =
-    null;
-
-
-  let checkingUpdate =
-    false;
-
-
-
-  function readVersionFromHtml(
-    html
-  ) {
-
-    const doc =
-      new DOMParser()
-        .parseFromString(
-          html,
-          "text/html"
-        );
-
-
-    const versionMeta =
-      doc.querySelector(
-        'meta[name="app-version"]'
-      );
-
-
-    const messageMeta =
-      doc.querySelector(
-        'meta[name="app-update-message"]'
-      );
-
-
-    return {
-
-      version:
-        versionMeta
-          ? versionMeta
-              .content
-              .trim()
-          : null,
-
-      message:
-        messageMeta
-          ? messageMeta
-              .content
-              .trim()
-          : ""
-
-    };
-
-  }
-
-
-
-  function showUpdateNotice(
-    latestVersion,
-    updateMessage
-  ) {
-
-    pendingVersion =
-      latestVersion;
-
-
-    updateVersion.textContent =
-      "최신 버전 " +
-      latestVersion;
-
-
-    updateDescription.textContent =
-      updateMessage ||
-      "더 안정적인 사용을 위해 최신 버전으로 업데이트해 주세요.";
-
-
-    updateOverlay.hidden =
-      false;
-
-  }
-
-
-
-  async function checkForUpdate() {
-
-    if (checkingUpdate) {
-
-      return;
-
-    }
-
-
-    checkingUpdate =
-      true;
-
-
-    try {
-
-      const response =
-        await fetch(
-          "./index.html?update_check=" +
-          Date.now(),
-          {
-            cache: "no-store"
-          }
-        );
-
-
-      if (!response.ok) {
-
-        return;
-
-      }
-
-
-      const html =
-        await response.text();
-
-
-      const latest =
-        readVersionFromHtml(
-          html
-        );
-
-
-      if (!latest.version) {
-
-        return;
-
-      }
-
-
-      /*
-        이 업데이트 기능을
-        처음 설치한 사용자라면
-        현재 버전을 기준 버전으로 저장합니다.
-      */
-
-      let knownVersion =
-        localStorage.getItem(
-          VERSION_STORAGE_KEY
-        );
-
-
-      if (!knownVersion) {
-
-        localStorage.setItem(
-          VERSION_STORAGE_KEY,
-          APP_VERSION
-        );
-
-
-        knownVersion =
-          APP_VERSION;
-
-      }
-
-
-      /*
-        현재 화면 자체가 이미
-        새 버전으로 로드된 경우
-      */
-
-      if (
-        latest.version ===
-        APP_VERSION
-      ) {
-
-        if (
-          knownVersion !==
-          APP_VERSION
-        ) {
-
-          localStorage.setItem(
-            VERSION_STORAGE_KEY,
-            APP_VERSION
-          );
-
-
-          sessionStorage.removeItem(
-            DISMISSED_VERSION_KEY
-          );
-
-
-          showToast(
-            "✓ 최신 버전으로 업데이트되었습니다 · v" +
-            APP_VERSION,
-            3000
-          );
-
-        }
-
-
-        return;
-
-      }
-
-
-      /*
-        현재 사용 중인 화면보다
-        새 버전이 실제로 존재하는 경우
-      */
-
-      const dismissedVersion =
-        sessionStorage.getItem(
-          DISMISSED_VERSION_KEY
-        );
-
-
-      if (
-        dismissedVersion ===
-        latest.version
-      ) {
-
-        return;
-
-      }
-
-
-      showUpdateNotice(
-        latest.version,
-        latest.message
-      );
-
-
-    } catch (error) {
-
-      /*
-        인터넷이 잠시 끊겼을 때는
-        아무 메시지도 띄우지 않습니다.
-      */
-
-    } finally {
-
-      checkingUpdate =
-        false;
-
-    }
-
-  }
-
-
-
-  updateNowBtn.addEventListener(
-    "click",
-    () => {
-
-      if (!pendingVersion) {
-
-        return;
-
-      }
-
-
-      updateNowBtn.textContent =
-        "업데이트 중...";
-
-
-      updateNowBtn.disabled =
-        true;
-
-
-      const url =
-        new URL(
-          window.location.href
-        );
-
-
-      url.searchParams.set(
-        "v",
-        pendingVersion
-      );
-
-
-      url.searchParams.set(
-        "refresh",
-        Date.now()
-      );
-
-
-      window.location.replace(
-        url.toString()
-      );
-
-    }
-  );
-
-
-
-  laterBtn.addEventListener(
-    "click",
-    () => {
-
-      if (pendingVersion) {
-
-        sessionStorage.setItem(
-          DISMISSED_VERSION_KEY,
-          pendingVersion
-        );
-
-      }
-
-
-      updateOverlay.hidden =
-        true;
-
-    }
-  );
-
-
-
-  /*
-    앱 실행 후 한 번 확인
-  */
-
-  setTimeout(
-    checkForUpdate,
-    2500
-  );
-
-
-  /*
-    사용 중에는 5분마다 확인
-  */
-
-  setInterval(
-    checkForUpdate,
-    5 * 60 * 1000
-  );
-
-
-  /*
-    다른 앱을 사용하다가
-    다시 돌아왔을 때 확인
-  */
-
-  document.addEventListener(
-    "visibilitychange",
-    () => {
-
-      if (
-        document.visibilityState ===
-        "visible"
-      ) {
-
-        checkForUpdate();
-
-      }
-
-    }
-  );
-
-
-  window.addEventListener(
-    "focus",
-    checkForUpdate
-  );
-
-
-
-  /* =========================
-     예전 서비스워커와 캐시 제거
-     ========================= */
-
-  if (
-    "serviceWorker" in navigator
-  ) {
-
-    navigator.serviceWorker
-      .getRegistrations()
-      .then(
-        registrations => {
-
-          registrations.forEach(
-            registration => {
-
-              registration.unregister();
-
-            }
-          );
-
-        }
-      )
-      .catch(
-        () => {}
-      );
-
-  }
-
-
-  if (
-    "caches" in window
-  ) {
-
-    caches
-      .keys()
-      .then(
-        keys => {
-
-          keys.forEach(
-            key => {
-
-              caches.delete(
-                key
-              );
-
-            }
-          );
-
-        }
-      )
-      .catch(
-        () => {}
-      );
-
-  }
-
-
-})();
-
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag('js', new Date());
+  gtag('config', 'G-SYX6P6W3DK', {
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false
+  });
 </script>
 
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.app{max-width:760px;margin:0 auto;min-height:100vh;background:#fff}
+header{padding:14px 16px 12px;background:#fff;border-bottom:1px solid #e5e7eb}
+h1{margin:0;font-size:20px}.sub{margin-top:4px;font-size:12px;color:#6b7280}
+.toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 16px 10px}
+button,.fileLabel{min-height:48px;border:0;border-radius:12px;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.fileLabel{background:#111827;color:#fff}#saveBtn{background:#ef4444;color:#fff;transition:background .2s ease}#saveBtn.saved{background:#16a34a}button:disabled{opacity:.4;cursor:default}input[type=file]{display:none}
+.info{display:flex;justify-content:space-between;gap:10px;padding:0 16px 10px;font-size:13px;color:#4b5563}
+.hint{margin:0 16px 12px;padding:10px 12px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:13px;line-height:1.45}
+.message{display:none;position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:12000;width:calc(100% - 32px);max-width:430px;padding:14px;border-radius:14px;background:#111827;color:#fff;box-shadow:0 8px 30px rgba(0,0,0,.25);text-align:center}
+.message.show{display:block}.messageText{font-size:16px;font-weight:800}.shareNowBtn{width:100%;min-height:44px;margin-top:10px;background:#2563eb;color:#fff;border-radius:10px;font-size:15px}.shareNowBtn[hidden]{display:none!important}
+.viewport{height:calc(100vh - 195px);min-height:420px;overflow:auto;background:#d1d5db;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.stage{position:relative;width:100%;min-height:100%;background:#fff}#preview{display:block;width:100%;height:auto;margin:0;padding:0;object-position:top left;user-select:none;-webkit-user-drag:none}
+.empty{min-height:420px;display:grid;place-items:center;padding:25px;text-align:center;color:#6b7280;line-height:1.6}[hidden]{display:none!important}
+.cropLine{position:absolute;left:0;right:0;height:0;border-top:3px solid #ef4444;z-index:10;cursor:ns-resize;touch-action:none}.cropLine::before{content:"";position:absolute;left:0;right:0;top:-20px;height:40px}.badge{position:absolute;right:8px;top:-34px;padding:5px 8px;border-radius:8px;background:#ef4444;color:#fff;font-size:12px;font-weight:800;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.privacy{padding:12px 16px 18px;color:#6b7280;font-size:12px;line-height:1.6}.version{margin-top:4px;font-weight:700;color:#4b5563}
+.updateOverlay{position:fixed;inset:0;z-index:20000;display:grid;place-items:center;padding:20px;background:rgba(17,24,39,.55)}.updateCard{width:100%;max-width:390px;padding:24px 20px 18px;border-radius:20px;background:#fff;box-shadow:0 20px 60px rgba(0,0,0,.28)}.updateIcon{width:52px;height:52px;margin:0 auto 14px;display:grid;place-items:center;border-radius:50%;background:#eff6ff;font-size:28px}.updateTitle{margin:0;text-align:center;font-size:21px;font-weight:800}.updateVersion{margin-top:8px;text-align:center;color:#2563eb;font-size:13px;font-weight:700}.updateDescription{margin:14px 0 20px;color:#4b5563;text-align:center;font-size:14px;line-height:1.55}.updateButtons{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}.updateButtons button{width:100%}#laterBtn{background:#e5e7eb;color:#374151}#updateNowBtn{background:#2563eb;color:#fff}
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1>긴사진 자르기</h1>
+    <div class="sub">사진은 서버로 전송되지 않고 이 기기 안에서만 처리됩니다.</div>
+  </header>
+
+  <section class="toolbar">
+    <label class="fileLabel" for="fileInput">사진 불러오기</label>
+    <button id="saveBtn" disabled>저장하기</button>
+    <input id="fileInput" type="file" accept="image/*">
+  </section>
+
+  <section class="info">
+    <span id="sizeInfo">사진을 선택해 주세요</span>
+    <strong id="cutInfo">끝점 416px</strong>
+  </section>
+
+  <div class="hint">빨간 선을 위아래로 움직여 자를 위치를 맞춘 뒤 저장하세요. 처음 위치는 원본 기준 416px입니다.</div>
+
+  <div class="message" id="message">
+    <div class="messageText" id="messageText">✓ 저장되었습니다</div>
+    <button class="shareNowBtn" id="shareNowBtn" type="button" hidden>바로 공유하기</button>
+  </div>
+
+  <section class="viewport" id="viewport">
+    <div class="stage">
+      <div class="empty" id="empty">긴 스크린샷이나 사진을 선택하면 여기에 표시됩니다.</div>
+      <img id="preview" alt="" hidden>
+      <div class="cropLine" id="cropLine" hidden><span class="badge" id="lineBadge">416px</span></div>
+    </div>
+  </section>
+
+  <div class="privacy">
+    선택한 사진과 자른 이미지는 서버로 전송되지 않습니다.<br>
+    서비스 개선을 위해 앱 실행·사진 불러오기·저장·공유 같은 익명 사용 통계를 Google Analytics로 집계합니다. 사진 내용은 통계로 전송하지 않습니다.
+    <div class="version">버전 v<span id="versionLabel"></span></div>
+  </div>
+</main>
+
+<div class="updateOverlay" id="updateOverlay" hidden>
+  <div class="updateCard">
+    <div class="updateIcon">↻</div>
+    <h2 class="updateTitle">새로운 버전이 있습니다</h2>
+    <div class="updateVersion" id="updateVersion"></div>
+    <div class="updateDescription" id="updateDescription">더 안정적인 사용을 위해 최신 버전으로 업데이트해 주세요.</div>
+    <div class="updateButtons">
+      <button id="laterBtn" type="button">나중에</button>
+      <button id="updateNowBtn" type="button">지금 업데이트</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const APP_VERSION = document.querySelector('meta[name="app-version"]').content.trim();
+  const VERSION_STORAGE_KEY = "longPhotoCropperVersion";
+  const DISMISSED_VERSION_KEY = "longPhotoCropperDismissedVersion";
+  const DEFAULT_CUT = 416;
+
+  const fileInput = document.getElementById("fileInput");
+  const saveBtn = document.getElementById("saveBtn");
+  const preview = document.getElementById("preview");
+  const cropLine = document.getElementById("cropLine");
+  const lineBadge = document.getElementById("lineBadge");
+  const sizeInfo = document.getElementById("sizeInfo");
+  const cutInfo = document.getElementById("cutInfo");
+  const viewport = document.getElementById("viewport");
+  const empty = document.getElementById("empty");
+  const message = document.getElementById("message");
+  const messageText = document.getElementById("messageText");
+  const shareNowBtn = document.getElementById("shareNowBtn");
+  const versionLabel = document.getElementById("versionLabel");
+
+  versionLabel.textContent = APP_VERSION;
+
+  let objectUrl = null;
+  let originalWidth = 0;
+  let originalHeight = 0;
+  let selectedY = DEFAULT_CUT;
+  let dragging = false;
+  let messageTimer = null;
+  let buttonTimer = null;
+  let lastShareFile = null;
+
+  function trackEvent(name, params = {}) {
+    try {
+      if (typeof window.gtag === "function") {
+        window.gtag("event", name, { app_version: APP_VERSION, ...params });
+      }
+    } catch (_) {}
+  }
+
+  const displayMode = window.matchMedia("(display-mode: standalone)").matches ? "standalone" : "browser";
+  trackEvent("app_open", { display_mode: displayMode });
+
+  function canShareFile(file) {
+    if (!file || !navigator.share || !navigator.canShare) return false;
+    try { return navigator.canShare({ files: [file] }); }
+    catch (_) { return false; }
+  }
+
+  function showMessage(text, duration = 2600, showShare = false) {
+    clearTimeout(messageTimer);
+    messageText.textContent = text;
+    shareNowBtn.hidden = !(showShare && canShareFile(lastShareFile));
+    message.classList.add("show");
+    messageTimer = setTimeout(() => {
+      message.classList.remove("show");
+      shareNowBtn.hidden = true;
+    }, showShare ? 8000 : duration);
+  }
+
+  function showSaveSuccess() {
+    clearTimeout(buttonTimer);
+    saveBtn.textContent = "저장 완료 ✓";
+    saveBtn.classList.add("saved");
+    showMessage("✓ 저장되었습니다", 2600, true);
+    buttonTimer = setTimeout(() => {
+      saveBtn.textContent = "저장하기";
+      saveBtn.classList.remove("saved");
+    }, 2200);
+  }
+
+  function scale() {
+    return originalWidth ? preview.clientWidth / originalWidth : 1;
+  }
+
+  function clampY(y) {
+    if (!originalHeight) return DEFAULT_CUT;
+    return Math.max(1, Math.min(originalHeight, Math.round(y)));
+  }
+
+  function updateLine() {
+    if (!originalHeight || preview.hidden) return;
+    selectedY = clampY(selectedY);
+    cropLine.style.top = (selectedY * scale()) + "px";
+    lineBadge.textContent = selectedY.toLocaleString() + "px";
+    cutInfo.textContent = "끝점 " + selectedY.toLocaleString() + "px";
+  }
+
+  function moveLine(clientY) {
+    const rect = preview.getBoundingClientRect();
+    const currentScale = scale();
+    if (!currentScale) return;
+    selectedY = clampY((clientY - rect.top) / currentScale);
+    updateLine();
+  }
+
+  cropLine.addEventListener("pointerdown", event => {
+    dragging = true;
+    try { cropLine.setPointerCapture(event.pointerId); } catch (_) {}
+    event.preventDefault();
+  });
+
+  cropLine.addEventListener("pointermove", event => {
+    if (!dragging) return;
+    moveLine(event.clientY);
+    event.preventDefault();
+  });
+
+  cropLine.addEventListener("pointerup", event => {
+    dragging = false;
+    try { cropLine.releasePointerCapture(event.pointerId); } catch (_) {}
+  });
+
+  cropLine.addEventListener("pointercancel", () => { dragging = false; });
+
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    clearTimeout(buttonTimer);
+    saveBtn.textContent = "저장하기";
+    saveBtn.classList.remove("saved");
+    message.classList.remove("show");
+    shareNowBtn.hidden = true;
+    lastShareFile = null;
+
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+
+    preview.onload = () => {
+      originalWidth = preview.naturalWidth;
+      originalHeight = preview.naturalHeight;
+      selectedY = Math.min(DEFAULT_CUT, originalHeight);
+      empty.hidden = true;
+      preview.hidden = false;
+      cropLine.hidden = false;
+      saveBtn.disabled = false;
+      sizeInfo.textContent = "원본 " + originalWidth.toLocaleString() + " × " + originalHeight.toLocaleString() + " px";
+      trackEvent("photo_loaded");
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          updateLine();
+          viewport.scrollTo({ top: 0, left: 0, behavior: "auto" });
+        });
+      });
+    };
+
+    preview.onerror = () => alert("사진을 불러오지 못했습니다.");
+    preview.src = objectUrl;
+  });
+
+  window.addEventListener("resize", () => requestAnimationFrame(updateLine));
+
+  function createCanvas() {
+    if (!originalWidth || !originalHeight || !objectUrl) return null;
+    const cropHeight = clampY(selectedY);
+    const canvas = document.createElement("canvas");
+    canvas.width = originalWidth;
+    canvas.height = cropHeight;
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) return null;
+    ctx.drawImage(preview, 0, 0, originalWidth, cropHeight, 0, 0, originalWidth, cropHeight);
+    return canvas;
+  }
+
+  function dataUrlToBlob(dataUrl) {
+    const parts = dataUrl.split(",");
+    const byteString = atob(parts[1]);
+    const bytes = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
+    return new Blob([bytes], { type: "image/jpeg" });
+  }
+
+  saveBtn.addEventListener("click", () => {
+    try {
+      const canvas = createCanvas();
+      if (!canvas) {
+        alert("이미지를 만들지 못했습니다.");
+        return;
+      }
+
+      const filename = "cropped-" + Date.now() + ".jpg";
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      try {
+        const blob = dataUrlToBlob(dataUrl);
+        lastShareFile = new File([blob], filename, { type: "image/jpeg" });
+      } catch (_) {
+        lastShareFile = null;
+      }
+
+      trackEvent("image_saved");
+      showSaveSuccess();
+    } catch (error) {
+      console.error(error);
+      alert("저장 중 오류가 발생했습니다.");
+    }
+  });
+
+  shareNowBtn.addEventListener("click", async () => {
+    if (!canShareFile(lastShareFile)) {
+      showMessage("이 기기에서는 바로 공유를 지원하지 않습니다.", 3000, false);
+      trackEvent("share_unsupported");
+      return;
+    }
+
+    trackEvent("share_started");
+    clearTimeout(messageTimer);
+
+    try {
+      await navigator.share({
+        files: [lastShareFile],
+        title: "자른 이미지"
+      });
+      trackEvent("share_completed");
+      showMessage("✓ 공유했습니다", 2200, false);
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        trackEvent("share_cancelled");
+        showMessage("공유를 취소했습니다.", 1800, false);
+        return;
+      }
+      console.error(error);
+      trackEvent("share_error");
+      showMessage("공유 중 오류가 발생했습니다.", 3000, false);
+    }
+  });
+
+  /* 업데이트 확인 */
+  const updateOverlay = document.getElementById("updateOverlay");
+  const updateVersion = document.getElementById("updateVersion");
+  const updateDescription = document.getElementById("updateDescription");
+  const updateNowBtn = document.getElementById("updateNowBtn");
+  const laterBtn = document.getElementById("laterBtn");
+  let pendingVersion = null;
+  let checkingUpdate = false;
+
+  function safeGet(storage, key) {
+    try { return storage.getItem(key); } catch (_) { return null; }
+  }
+  function safeSet(storage, key, value) {
+    try { storage.setItem(key, value); } catch (_) {}
+  }
+  function safeRemove(storage, key) {
+    try { storage.removeItem(key); } catch (_) {}
+  }
+
+  function readVersionFromHtml(html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const versionMeta = doc.querySelector('meta[name="app-version"]');
+    const messageMeta = doc.querySelector('meta[name="app-update-message"]');
+    return {
+      version: versionMeta ? versionMeta.content.trim() : null,
+      message: messageMeta ? messageMeta.content.trim() : ""
+    };
+  }
+
+  function showUpdateNotice(latestVersion, updateMessage) {
+    pendingVersion = latestVersion;
+    updateVersion.textContent = "최신 버전 v" + latestVersion;
+    updateDescription.textContent = updateMessage || "더 안정적인 사용을 위해 최신 버전으로 업데이트해 주세요.";
+    updateOverlay.hidden = false;
+    trackEvent("update_notice_shown", { latest_version: latestVersion });
+  }
+
+  async function checkForUpdate() {
+    if (checkingUpdate) return;
+    checkingUpdate = true;
+
+    try {
+      const response = await fetch("./index.html?update_check=" + Date.now(), { cache: "no-store" });
+      if (!response.ok) return;
+      const latest = readVersionFromHtml(await response.text());
+      if (!latest.version) return;
+
+      let knownVersion = safeGet(localStorage, VERSION_STORAGE_KEY);
+      if (!knownVersion) {
+        safeSet(localStorage, VERSION_STORAGE_KEY, APP_VERSION);
+        knownVersion = APP_VERSION;
+      }
+
+      if (latest.version === APP_VERSION) {
+        if (knownVersion !== APP_VERSION) {
+          safeSet(localStorage, VERSION_STORAGE_KEY, APP_VERSION);
+          safeRemove(sessionStorage, DISMISSED_VERSION_KEY);
+          showMessage("✓ 최신 버전으로 업데이트되었습니다 · v" + APP_VERSION, 3000, false);
+          trackEvent("update_completed");
+        }
+        return;
+      }
+
+      const dismissedVersion = safeGet(sessionStorage, DISMISSED_VERSION_KEY);
+      if (dismissedVersion === latest.version) return;
+      showUpdateNotice(latest.version, latest.message);
+    } catch (_) {
+      /* 오프라인/일시 오류는 조용히 무시 */
+    } finally {
+      checkingUpdate = false;
+    }
+  }
+
+  updateNowBtn.addEventListener("click", () => {
+    if (!pendingVersion) return;
+    trackEvent("update_now_clicked", { latest_version: pendingVersion });
+    updateNowBtn.textContent = "업데이트 중...";
+    updateNowBtn.disabled = true;
+    safeSet(localStorage, VERSION_STORAGE_KEY, APP_VERSION);
+    const url = new URL(window.location.href);
+    url.searchParams.set("v", pendingVersion);
+    url.searchParams.set("refresh", Date.now());
+    window.location.replace(url.toString());
+  });
+
+  laterBtn.addEventListener("click", () => {
+    if (pendingVersion) safeSet(sessionStorage, DISMISSED_VERSION_KEY, pendingVersion);
+    updateOverlay.hidden = true;
+    trackEvent("update_later_clicked", { latest_version: pendingVersion || "" });
+  });
+
+  setTimeout(checkForUpdate, 2500);
+  setInterval(checkForUpdate, 5 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkForUpdate();
+  });
+  window.addEventListener("focus", checkForUpdate);
+
+  /* 예전 서비스워커/캐시 제거 */
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      registrations.forEach(registration => registration.unregister());
+    }).catch(() => {});
+  }
+  if ("caches" in window) {
+    caches.keys().then(keys => keys.forEach(key => caches.delete(key))).catch(() => {});
+  }
+})();
+</script>
 </body>
 </html>
